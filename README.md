@@ -1,7 +1,7 @@
 # Renderizador
-Renderizador base para o curso de Computação Gráfica
-
 **Alunos: Eduardo Araujo & Paulo Falcão**
+
+Renderizador base para o curso de Computação Gráfica
 
 Pré-requisitos:
 
