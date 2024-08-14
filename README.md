@@ -1,6 +1,8 @@
 # Renderizador
 Renderizador base para o curso de Computação Gráfica
 
+**Alunos: Eduardo Araujo & Paulo Falcão**
+
 Pré-requisitos:
 
 ```sh
