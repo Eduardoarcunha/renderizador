@@ -26,6 +26,7 @@ class GL:
     far = 1000  # plano de corte distante
 
     perspective_matrix = None
+    transformation_stack = []
 
     @staticmethod
     def setup(width, height, near=0.01, far=1000):
@@ -372,14 +373,65 @@ class GL:
 
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
         print("Transform : ", end="")
+
+        # TODO: Revisar a ordem das operações a serem adicionadas na pilha
         if translation:
             print(
                 "translation = {0} ".format(translation), end=""
             )  # imprime no terminal
+            dx, dy, dz = translation[0], translation[1], translation[2]
+            translation_matrix = [
+                [1, 0, 0, dx],
+                [0, 1, 0, dy],
+                [0, 0, 1, dz],
+                [0, 0, 0, 1],
+            ]
+
+            GL.transformation_stack.append(translation_matrix)
         if scale:
             print("scale = {0} ".format(scale), end="")  # imprime no terminal
+            sx, sy, sz = translation[0], translation[1], translation[2]
+            scale_matrix = [
+                [sx, 0, 0, 0],
+                [0, sy, 0, 0],
+                [0, 0, sz, 0],
+                [0, 0, 0, 1],
+            ]
+
+            GL.transformation_stack.append(scale_matrix)
         if rotation:
             print("rotation = {0} ".format(rotation), end="")  # imprime no terminal
+            ux, uy, uz, angle = rotation[0], rotation[1], rotation[2], rotation[3]
+
+            qr = math.cos(angle / 2)
+            qx = math.sin(angle / 2) * ux
+            qy = math.sin(angle / 2) * uy
+            qz = math.sin(angle / 2) * uz
+
+            rotation_matrix = [
+                [
+                    1 - 2 * (qy**2 + qz**2),
+                    2 * (qx * qy - qz * qr),
+                    2 * (qx * qz + qy * qr),
+                    0,
+                ],
+                [
+                    2 * (qx * qy + qz * qr),
+                    1 - 2 * (qx**2 + qz**2),
+                    2 * (qy * qz - qx * qr),
+                    0,
+                ],
+                [
+                    2 * (qx * qz - qy * qr),
+                    2 * (qy * qz + qx * qr),
+                    1 - 2 * (qx**2 + qy**2),
+                    0,
+                ],
+                [0, 0, 0, 1],
+            ]
+
+            GL.transformation_stack.append(rotation_matrix)
+
         print("")
 
     @staticmethod
