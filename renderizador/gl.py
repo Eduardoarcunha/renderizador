@@ -25,6 +25,8 @@ class GL:
     near = 0.01  # plano de corte próximo
     far = 1000  # plano de corte distante
 
+    perspective_matrix = None
+
     @staticmethod
     def setup(width, height, near=0.01, far=1000):
         """Definr parametros para câmera de razão de aspecto, plano próximo e distante."""
@@ -332,6 +334,25 @@ class GL:
         # Na função de viewpoint você receberá a posição, orientação e campo de visão da
         # câmera virtual. Use esses dados para poder calcular e criar a matriz de projeção
         # perspectiva para poder aplicar nos pontos dos objetos geométricos.
+
+        # position = [0.0, 0.0, -5.0] orientation = [0.0, -1.0, 0.0, 3.1415] fieldOfView = 0.7853981633974483
+        top = GL.near * math.tan(fieldOfView)
+        bottom = -top
+        right = top * (GL.width / GL.height)
+        left = -right
+
+        # TODO: Como encaixar position e orientation nisso?
+        GL.perspective_matrix = [
+            [GL.near / right, 0, 0, 0],
+            [0, GL.near / top, 0, 0],
+            [
+                0,
+                0,
+                -((GL.far + GL.near) / (GL.far - GL.near)),
+                (-2 * GL.far * GL.near) / (GL.far - GL.near),
+            ],
+            [0, 0, -1, 0],
+        ]
 
         print("Viewpoint : ", end="")
         print("position = {0} ".format(position), end="")
