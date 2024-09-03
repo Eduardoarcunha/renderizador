@@ -37,16 +37,29 @@ class Transform:
         )
         self.transformation_matrix = np.matmul(self.transformation_matrix, scale_matrix)
 
+    def apply_screen_scale(self, scale):
+        """Apply screen scaling to the transformation matrix."""
+        sx, sy = scale
+        scale_matrix = np.array(
+            [
+                [sx, 0, 0, 1],
+                [0, sy, 0, 1],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1],
+            ]
+        )
+        self.transformation_matrix = np.matmul(self.transformation_matrix, scale_matrix)
+
     def apply_rotation(self, rotation, inverse=False):
         """Apply rotation to the transformation matrix."""
+        axis = rotation[:3] / np.linalg.norm(rotation[:3])
         angle = rotation[3]
-        rotation = rotation / np.linalg.norm(rotation)
-
-        ux, uy, uz, _ = rotation
-        qr = math.cos(angle / 2)
+        ux, uy, uz = axis
+        
         qx = math.sin(angle / 2) * ux
         qy = math.sin(angle / 2) * uy
         qz = math.sin(angle / 2) * uz
+        qr = math.cos(angle / 2)
 
         rotation_matrix = np.array(
             [

@@ -326,16 +326,15 @@ class GL:
         # ) 
 
         for i in range(0, len(point), 9):
-            pos_x1 = int(point[i])
-            pos_y1 = int(point[i + 1])
-            pos_z1 = int(point[i + 2])
-            pos_x2 = int(point[i + 3])
-            pos_y2 = int(point[i + 4])
-            pos_z2 = int(point[i + 5])
-            pos_x3 = int(point[i + 6])
-            pos_y3 = int(point[i + 7])
-            pos_z3 = int(point[i + 8])
-            
+            pos_x1 = point[i]
+            pos_y1 = point[i + 1]
+            pos_z1 = point[i + 2]
+            pos_x2 = point[i + 3]
+            pos_y2 = point[i + 4]
+            pos_z2 = point[i + 5]
+            pos_x3 = point[i + 6]
+            pos_y3 = point[i + 7]
+            pos_z3 = point[i + 8]
 
             points_matrix = np.array([
                 [pos_x1, pos_x2, pos_x3], 
@@ -376,8 +375,7 @@ class GL:
         transform = Transform()
 
         # Define perspective directions
-        fovY = 2 * math.atan(math.tan(fieldOfView / 2) * GL.height / ((GL.height**2 + GL.width**2)**0.5))
-
+        fovY = 2 * math.atan(math.tan(fieldOfView / 2) * GL.height / math.sqrt((GL.height**2 + GL.width**2)))
         top = GL.near * math.tan(fovY)
         bottom = -top
         right = top * (GL.width / GL.height)
