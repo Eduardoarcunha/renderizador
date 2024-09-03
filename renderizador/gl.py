@@ -23,6 +23,7 @@ class GL:
     height = 600  # altura da tela
     near = 0.01   # plano de corte próximo
     far = 1000    # plano de corte distante
+    matrix = np.identity(4)  # matriz de transformação
 
     @staticmethod
     def setup(width, height, near=0.01, far=1000):
@@ -259,6 +260,31 @@ class GL:
         print("orientation = {0} ".format(orientation), end='')
         print("fieldOfView = {0} ".format(fieldOfView))
 
+        top = GL.near * math.tan(math.radians(fieldOfView)/2)
+        bottom = -top
+        aspect = GL.width / GL.height
+        right = top * aspect
+        left = -right
+
+        P = np.array([
+            [GL.near/right, 0, 0, 0],
+            [0, GL.near/top, 0, 0],
+            [0, 0, -(GL.far + GL.near)/(GL.far - GL.near), -2*GL.far*GL.near/(GL.far - GL.near)],
+            [0, 0, -1, 0]
+        ])
+
+        T = np.array([
+            [1, 0, 0, -position[0]],
+            [0, 1, 0, -position[1]],
+            [0, 0, 1, -position[2]],
+            [0, 0, 0, 1]
+        ])
+
+        R = np.identity(4)
+        # DO LATER
+
+        GL.matrix = np.dot(P, np.dot(T, R))
+        
     @staticmethod
     def transform_in(translation, scale, rotation):
         """Função usada para renderizar (na verdade coletar os dados) de Transform."""
@@ -279,6 +305,7 @@ class GL:
         if rotation:
             print("rotation = {0} ".format(rotation), end='') # imprime no terminal
         print("")
+
 
     @staticmethod
     def transform_out():
