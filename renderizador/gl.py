@@ -338,29 +338,39 @@ class GL:
         # câmera virtual. Use esses dados para poder calcular e criar a matriz de projeção
         # perspectiva para poder aplicar nos pontos dos objetos geométricos.
 
-        # position = [0.0, 0.0, -5.0] orientation = [0.0, -1.0, 0.0, 3.1415] fieldOfView = 0.7853981633974483
+        # Instantiate the Transform class
+        transform = Transform()
+
+        # Define perspective directions
         top = GL.near * math.tan(fieldOfView)
         bottom = -top
         right = top * (GL.width / GL.height)
         left = -right
 
-        # TODO: Como encaixar position e orientation nisso?
-        GL.perspective_matrix = [
-            [GL.near / right, 0, 0, 0],
-            [0, GL.near / top, 0, 0],
-            [
-                0,
-                0,
-                -((GL.far + GL.near) / (GL.far - GL.near)),
-                (-2 * GL.far * GL.near) / (GL.far - GL.near),
-            ],
-            [0, 0, -1, 0],
-        ]
+        # Apply perspective transformation
+        # The perspective matrix handles how objects are projected onto the screen
+        directions = (top, bottom, right, left)
+        transform.apply_perspective(directions, GL.near, GL.far)
+
+        # Apply rotation transformation
+        # The camera's orientation is converted from the axis-angle form into a rotation matrix.
+        # This matrix is responsible for rotating the scene according to the camera's orientation.
+        transform.apply_rotation(orientation)
+
+        # Apply translation transformation
+        # The camera’s position is used to create a translation matrix that moves the entire scene
+        # in the opposite direction of the camera's position.
+        tx, ty, tz = position
+        translation = (-tx, -ty, -tz)
+        transform.apply_translation(translation)
+
+        GL.perspective_matrix = transform.get_transformation_matrix()
 
         print("Viewpoint : ", end="")
         print("position = {0} ".format(position), end="")
         print("orientation = {0} ".format(orientation), end="")
         print("fieldOfView = {0} ".format(fieldOfView))
+        print(f"perspective matrix: {GL.perspective_matrix}")
 
     @staticmethod
     def transform_in(translation, scale, rotation):

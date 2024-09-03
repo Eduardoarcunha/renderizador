@@ -70,6 +70,27 @@ class Transform:
         )
         self.transformation_matrix = np.dot(self.transformation_matrix, rotation_matrix)
 
+    def apply_perspective(self, directions, near, far):
+        """Apply perspective to the transformation matrix."""
+        top, bottom, right, left = directions
+
+        perspective_matrix = np.array(
+            [
+                [2 * near / (right - left), 0, (right + left) / (right - left), 0],
+                [0, 2 * near / (top - bottom), (top + bottom) / (top - bottom), 0],
+                [
+                    0,
+                    0,
+                    -(far + near) / (far - near),
+                    -2 * far * near / (far - near),
+                ],
+                [0, 0, -1, 0],
+            ]
+        )
+        self.transformation_matrix = np.dot(
+            self.transformation_matrix, perspective_matrix
+        )
+
     def get_transformation_matrix(self):
         """Return the resulting transformation matrix."""
         return self.transformation_matrix
