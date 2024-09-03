@@ -16,6 +16,8 @@ import gpu  # Simula os recursos de uma GPU
 import math  # Funções matemáticas
 import numpy as np  # Biblioteca do Numpy
 
+from utils import Transform
+
 
 class GL:
     """Classe que representa a biblioteca gráfica (Graphics Library)."""
@@ -374,65 +376,27 @@ class GL:
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
         print("Transform : ", end="")
 
-        # TODO: Revisar a ordem das operações a serem adicionadas na pilha
+        # Instantiate the Transform class
+        transform = Transform()
+
+        # Apply the transformations
         if translation:
-            print(
-                "translation = {0} ".format(translation), end=""
-            )  # imprime no terminal
-            dx, dy, dz = translation[0], translation[1], translation[2]
-            translation_matrix = [
-                [1, 0, 0, dx],
-                [0, 1, 0, dy],
-                [0, 0, 1, dz],
-                [0, 0, 0, 1],
-            ]
+            print("translation = {0} ".format(translation), end="")
+            transform.apply_translation(translation)
 
-            GL.transformation_stack.append(translation_matrix)
-        if scale:
-            print("scale = {0} ".format(scale), end="")  # imprime no terminal
-            sx, sy, sz = translation[0], translation[1], translation[2]
-            scale_matrix = [
-                [sx, 0, 0, 0],
-                [0, sy, 0, 0],
-                [0, 0, sz, 0],
-                [0, 0, 0, 1],
-            ]
-
-            GL.transformation_stack.append(scale_matrix)
         if rotation:
-            print("rotation = {0} ".format(rotation), end="")  # imprime no terminal
-            ux, uy, uz, angle = rotation[0], rotation[1], rotation[2], rotation[3]
+            print("rotation = {0} ".format(rotation), end="")
+            transform.apply_rotation(rotation)
 
-            qr = math.cos(angle / 2)
-            qx = math.sin(angle / 2) * ux
-            qy = math.sin(angle / 2) * uy
-            qz = math.sin(angle / 2) * uz
+        if scale:
+            print("scale = {0} ".format(scale), end="")
+            transform.apply_scale(scale)
 
-            rotation_matrix = [
-                [
-                    1 - 2 * (qy**2 + qz**2),
-                    2 * (qx * qy - qz * qr),
-                    2 * (qx * qz + qy * qr),
-                    0,
-                ],
-                [
-                    2 * (qx * qy + qz * qr),
-                    1 - 2 * (qx**2 + qz**2),
-                    2 * (qy * qz - qx * qr),
-                    0,
-                ],
-                [
-                    2 * (qx * qz - qy * qr),
-                    2 * (qy * qz + qx * qr),
-                    1 - 2 * (qx**2 + qy**2),
-                    0,
-                ],
-                [0, 0, 0, 1],
-            ]
+        # Get the final transformation matrix and append it to the stack
+        transformation_matrix = transform.get_transformation_matrix()
+        print(f"\ntransformation: {transformation_matrix}")
 
-            GL.transformation_stack.append(rotation_matrix)
-
-        print("")
+        GL.transformation_stack.append(transformation_matrix)
 
     @staticmethod
     def transform_out():
