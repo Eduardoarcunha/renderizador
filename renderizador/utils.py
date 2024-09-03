@@ -20,7 +20,7 @@ class Transform:
                 [0, 0, 0, 1],
             ]
         )
-        self.transformation_matrix = np.dot(
+        self.transformation_matrix = np.matmul(
             self.transformation_matrix, translation_matrix
         )
 
@@ -35,11 +35,14 @@ class Transform:
                 [0, 0, 0, 1],
             ]
         )
-        self.transformation_matrix = np.dot(self.transformation_matrix, scale_matrix)
+        self.transformation_matrix = np.matmul(self.transformation_matrix, scale_matrix)
 
-    def apply_rotation(self, rotation):
+    def apply_rotation(self, rotation, inverse=False):
         """Apply rotation to the transformation matrix."""
-        ux, uy, uz, angle = rotation
+        angle = rotation[3]
+        rotation = rotation / np.linalg.norm(rotation)
+
+        ux, uy, uz, _ = rotation
         qr = math.cos(angle / 2)
         qx = math.sin(angle / 2) * ux
         qy = math.sin(angle / 2) * uy
@@ -68,7 +71,10 @@ class Transform:
                 [0, 0, 0, 1],
             ]
         )
-        self.transformation_matrix = np.dot(self.transformation_matrix, rotation_matrix)
+        if inverse:
+            rotation_matrix = np.transpose(rotation_matrix)
+
+        self.transformation_matrix = np.matmul(self.transformation_matrix, rotation_matrix)
 
     def apply_perspective(self, directions, near, far):
         """Apply perspective to the transformation matrix."""
@@ -76,20 +82,35 @@ class Transform:
 
         perspective_matrix = np.array(
             [
-                [2 * near / (right - left), 0, (right + left) / (right - left), 0],
-                [0, 2 * near / (top - bottom), (top + bottom) / (top - bottom), 0],
-                [
-                    0,
-                    0,
-                    -(far + near) / (far - near),
-                    -2 * far * near / (far - near),
-                ],
+                [near/right, 0, 0, 0],
+                [0, near/top, 0, 0],
+                [0, 0, -(far + near) / (far - near), -2 * far * near / (far - near)],
                 [0, 0, -1, 0],
             ]
         )
-        self.transformation_matrix = np.dot(
+        self.transformation_matrix = np.matmul(
             self.transformation_matrix, perspective_matrix
         )
+
+    def apply_mirror(self, axis):
+        """Apply mirror to the transformation matrix."""
+        dict = {
+            "x": np.array([[-1, 0, 0, 0], 
+                           [0, 1, 0, 0], 
+                           [0, 0, 1, 0], 
+                           [0, 0, 0, 1]]),
+            "y": np.array([[1, 0, 0, 0], 
+                           [0, -1, 0, 0], 
+                           [0, 0, 1, 0], 
+                           [0, 0, 0, 1]]),
+            "z": np.array([[1, 0, 0, 0], 
+                           [0, 1, 0, 0], 
+                           [0, 0, -1, 0], 
+                           [0, 0, 0, 1]]),
+        }
+
+        self.transformation_matrix = np.matmul(self.transformation_matrix, dict[axis])
+
 
     def get_transformation_matrix(self):
         """Return the resulting transformation matrix."""

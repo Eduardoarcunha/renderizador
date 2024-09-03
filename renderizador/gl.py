@@ -267,10 +267,7 @@ class GL:
         # quantidade de pontos é sempre multiplo de 3, ou seja, 6 valores ou 12 valores, etc.
         # O parâmetro colors é um dicionário com os tipos cores possíveis, para o TriangleSet2D
         # você pode assumir inicialmente o desenho das linhas com a cor emissiva (emissiveColor).
-        print("TriangleSet2D : vertices = {0}".format(vertices))  # imprime no terminal
-        print(
-            "TriangleSet2D : colors = {0}".format(colors)
-        )  # imprime no terminal as cores
+        
 
         # Exemplo:
         # gpu.GPU.draw_pixel([6, 8], gpu.GPU.RGB8, [255, 255, 0])  # altera pixel (u, v, tipo, r, g, b)
@@ -323,13 +320,50 @@ class GL:
         # tipos de cores.
 
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        print("TriangleSet : pontos = {0}".format(point))  # imprime no terminal pontos
-        print(
-            "TriangleSet : colors = {0}".format(colors)
-        )  # imprime no terminal as cores
+        # print("TriangleSet : pontos = {0}".format(point))  # imprime no terminal pontos
+        # print(
+        #     "TriangleSet : colors = {0}".format(colors)
+        # ) 
 
-        # Exemplo de desenho de um pixel branco na coordenada 10, 10
-        gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
+        for i in range(0, len(point), 9):
+            pos_x1 = int(point[i])
+            pos_y1 = int(point[i + 1])
+            pos_z1 = int(point[i + 2])
+            pos_x2 = int(point[i + 3])
+            pos_y2 = int(point[i + 4])
+            pos_z2 = int(point[i + 5])
+            pos_x3 = int(point[i + 6])
+            pos_y3 = int(point[i + 7])
+            pos_z3 = int(point[i + 8])
+            
+
+            points_matrix = np.array([
+                [pos_x1, pos_x2, pos_x3], 
+                [pos_y1, pos_y2, pos_y3], 
+                [pos_z1, pos_z2, pos_z3], 
+                [1, 1, 1]])
+            
+            transformed_points = np.matmul(GL.transformation_stack.pop(), points_matrix)
+            ndc = np.matmul(GL.perspective_matrix, transformed_points)
+            ndc = ndc / ndc[3]
+
+            transform = Transform()
+            transform.apply_scale([GL.width / 2, GL.height / 2, 1])
+            transform.apply_translation([1, 1, 0])
+            transform.apply_mirror("y")
+            transform_matrix = transform.get_transformation_matrix()
+
+            screen_points = np.matmul(transform_matrix, ndc)
+            screen_points = screen_points / screen_points[3]
+            
+            points = []
+            for j in range(0, 3):
+                points.append(screen_points[0][j])
+                points.append(screen_points[1][j])
+
+            print(f'Points: {points}')
+            GL.triangleSet2D(points, colors)
+
 
     @staticmethod
     def viewpoint(position, orientation, fieldOfView):
@@ -342,7 +376,9 @@ class GL:
         transform = Transform()
 
         # Define perspective directions
-        top = GL.near * math.tan(fieldOfView)
+        fovY = 2 * math.atan(math.tan(fieldOfView / 2) * GL.height / ((GL.height**2 + GL.width**2)**0.5))
+
+        top = GL.near * math.tan(fovY)
         bottom = -top
         right = top * (GL.width / GL.height)
         left = -right
@@ -351,11 +387,13 @@ class GL:
         # The perspective matrix handles how objects are projected onto the screen
         directions = (top, bottom, right, left)
         transform.apply_perspective(directions, GL.near, GL.far)
+        # print(f'Perspec: {transform.get_transformation_matrix()}')
+
 
         # Apply rotation transformation
         # The camera's orientation is converted from the axis-angle form into a rotation matrix.
         # This matrix is responsible for rotating the scene according to the camera's orientation.
-        transform.apply_rotation(orientation)
+        transform.apply_rotation(orientation, inverse=True)
 
         # Apply translation transformation
         # The camera’s position is used to create a translation matrix that moves the entire scene
