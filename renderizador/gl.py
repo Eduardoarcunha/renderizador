@@ -345,7 +345,7 @@ class GL:
                 [pos_z1, pos_z2, pos_z3], 
                 [1, 1, 1]])
             
-            transformed_points = np.matmul(GL.transformation_stack.pop(), points_matrix)
+            transformed_points = np.matmul(GL.transformation_stack[-1], points_matrix)
             ndc = np.matmul(GL.perspective_matrix, transformed_points)
             ndc = ndc / ndc[3]
 
@@ -363,7 +363,7 @@ class GL:
                 points.append(screen_points[0][j])
                 points.append(screen_points[1][j])
 
-            print(f'Points: {points}')
+            # print(f'Points: {points}')
             GL.triangleSet2D(points, colors)
 
 
@@ -485,7 +485,50 @@ class GL:
         )  # imprime no terminal as cores
 
         # Exemplo de desenho de um pixel branco na coordenada 10, 10
-        gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
+        # gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
+
+        # for c in stripCount:
+
+        #     i, j = 0, 0
+        #     while i < c - 2:
+        #         pos_x1 = point[j]
+        #         pos_y1 = point[j + 1]
+        #         pos_z1 = point[j + 2]
+        #         pos_x2 = point[j + 3]
+        #         pos_y2 = point[j + 4]
+        #         pos_z2 = point[j + 5]
+        #         pos_x3 = point[j + 6]
+        #         pos_y3 = point[j + 7]
+        #         pos_z3 = point[j + 8]
+
+        #         if i % 2 == 0:
+        #             points = [pos_x1, pos_y1, pos_z1, pos_x2, pos_y2, pos_z2, pos_x3, pos_y3, pos_z3]
+        #         else:
+        #             points = [pos_x1, pos_y1, pos_z1, pos_x3, pos_y3, pos_z3, pos_x2, pos_y2, pos_z2]
+                
+        #         GL.triangleSet(points, colors)
+        #         i += 1
+        #         j += 3
+
+
+        for i in range(0, len(point) - 8, 3):
+            pos_x1 = point[i]
+            pos_y1 = point[i + 1]
+            pos_z1 = point[i + 2]
+            pos_x2 = point[i + 3]
+            pos_y2 = point[i + 4]
+            pos_z2 = point[i + 5]
+            pos_x3 = point[i + 6]
+            pos_y3 = point[i + 7]
+            pos_z3 = point[i + 8]
+
+            if i % 2 == 0:
+                points = [pos_x1, pos_y1, pos_z1, pos_x2, pos_y2, pos_z2, pos_x3, pos_y3, pos_z3]
+            else:
+                points = [pos_x1, pos_y1, pos_z1, pos_x3, pos_y3, pos_z3, pos_x2, pos_y2, pos_z2]
+
+            GL.triangleSet(points, colors)
+        
 
     @staticmethod
     def indexedTriangleStripSet(point, index, colors):
@@ -511,8 +554,26 @@ class GL:
             "IndexedTriangleStripSet : colors = {0}".format(colors)
         )  # imprime as cores
 
-        # Exemplo de desenho de um pixel branco na coordenada 10, 10
-        gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
+        all_points = []
+        for i in range(0, len(point) - 2, 3):
+            pos_x = point[i]
+            pos_y = point[i + 1]
+            pos_z = point[i + 2]
+            all_points.append((pos_x, pos_y, pos_z))
+
+        for i in range(len(index)-3):
+
+            p0 = all_points[index[i]]
+            p1 = all_points[index[i+1]]
+            p2 = all_points[index[i+2]]
+
+            if i % 2 == 0:
+                points = [p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]]
+            else:
+                points = [p0[0], p0[1], p0[2], p2[0], p2[1], p2[2], p1[0], p1[1], p1[2]]
+
+            GL.triangleSet(points, colors)
+
 
     @staticmethod
     def indexedFaceSet(
@@ -568,8 +629,19 @@ class GL:
             "IndexedFaceSet : colors = {0}".format(colors)
         )  # imprime no terminal as cores
 
-        # Exemplo de desenho de um pixel branco na coordenada 10, 10
-        gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
+        pos_x0 = coord[0]
+        pos_y0 = coord[1]
+        pos_z0 = coord[2]
+
+        for i in range(3, len(coord) - 5, 3):
+            pos_x1 = coord[i]
+            pos_y1 = coord[i + 1]
+            pos_z1 = coord[i + 2]
+            pos_x2 = coord[i + 3]
+            pos_y2 = coord[i + 4]
+            pos_z2 = coord[i + 5]
+
+            GL.triangleSet([pos_x0, pos_y0, pos_z0, pos_x1, pos_y1, pos_z1, pos_x2, pos_y2, pos_z2], colors)
 
     @staticmethod
     def box(size, colors):
