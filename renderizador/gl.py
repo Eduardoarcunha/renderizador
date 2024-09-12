@@ -27,6 +27,8 @@ class GL:
     near = 0.01  # plano de corte próximo
     far = 1000  # plano de corte distante
 
+    inside_triangle_tolerance = 0.00001
+
     perspective_matrix = None
     transformation_stack = []
 
@@ -275,15 +277,17 @@ class GL:
         # gpu.GPU.draw_pixel([6, 8], gpu.GPU.RGB8, [255, 255, 0])  # altera pixel (u, v, tipo, r, g, b)
 
         for i in range(0, len(vertices), 6):
-            pos_x1 = int(vertices[i])
-            pos_y1 = int(vertices[i + 1])
-            pos_x2 = int(vertices[i + 2])
-            pos_y2 = int(vertices[i + 3])
-            pos_x3 = int(vertices[i + 4])
-            pos_y3 = int(vertices[i + 5])
+            pos_x1 = (vertices[i])
+            pos_y1 = (vertices[i + 1])
+            pos_x2 = (vertices[i + 2])
+            pos_y2 = (vertices[i + 3])
+            pos_x3 = (vertices[i + 4])
+            pos_y3 = (vertices[i + 5])
+
+            # print(f'P1: ({pos_x1}, {pos_y1}), P2: ({pos_x2}, {pos_y2}), P3: ({pos_x3}, {pos_y3})')
             GL.polyline2D(
                 [pos_x1, pos_y1, pos_x2, pos_y2, pos_x3, pos_y3, pos_x1, pos_y1], colors
-            )  # Colorir o triângulo
+            )
 
             l1a, l1b, l1c = l_coef(pos_x1, pos_y1, pos_x2, pos_y2)
             l2a, l2b, l2c = l_coef(pos_x2, pos_y2, pos_x3, pos_y3)
@@ -294,7 +298,7 @@ class GL:
                     l1 = l_eval(l1a, l1b, l1c, x, y)
                     l2 = l_eval(l2a, l2b, l2c, x, y)
                     l3 = l_eval(l3a, l3b, l3c, x, y)
-                    if l1 >= 0 and l2 >= 0 and l3 >= 0:
+                    if l1 >= GL.inside_triangle_tolerance and l2 >= GL.inside_triangle_tolerance and l3 >= GL.inside_triangle_tolerance:
                         gpu.GPU.draw_pixel(
                             [int(x), int(y)],
                             gpu.GPU.RGB8,
@@ -643,7 +647,7 @@ class GL:
         i = 0
         origin_point = None
 
-        while i < len(coordIndex) - 3:
+        while i < len(coordIndex) - 1:
             if coordIndex[i] == -1 or coordIndex[i + 1] == -1:
                 origin_point = None
                 i += 1
@@ -659,9 +663,9 @@ class GL:
             p2 = all_points[coordIndex[i + 1]]
             
             points = [p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]]
-            print(f'P{origin_point}: {p0}, P{i}: {p1}, P{i+1}: {p2}')
+            # print(f'P{origin_point}: {p0}, P{i}: {p1}, P{i+1}: {p2}')
             
-            GL.triangleSet(points, colors)            
+            GL.triangleSet(points, colors)
             i += 1
 
 
