@@ -560,18 +560,23 @@ class GL:
             pos_z = point[i + 2]
             all_points.append((pos_x, pos_y, pos_z))
 
-        for i in range(len(index)-3):
 
-            p0 = all_points[index[i]]
-            p1 = all_points[index[i+1]]
-            p2 = all_points[index[i+2]]
-
-            if i % 2 == 0:
-                points = [p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]]
+        i = 0
+        while i < len(index) - 2:
+            if index[i+2] == -1:
+                i += 3
             else:
-                points = [p0[0], p0[1], p0[2], p2[0], p2[1], p2[2], p1[0], p1[1], p1[2]]
+                p0 = all_points[index[i]]
+                p1 = all_points[index[i+1]]
+                p2 = all_points[index[i+2]]
 
-            GL.triangleSet(points, colors)
+                if i % 2 == 0:
+                    points = [p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]]
+                else:
+                    points = [p0[0], p0[1], p0[2], p2[0], p2[1], p2[2], p1[0], p1[1], p1[2]]
+
+                GL.triangleSet(points, colors)
+                i += 1
 
 
     @staticmethod
@@ -628,19 +633,38 @@ class GL:
             "IndexedFaceSet : colors = {0}".format(colors)
         )  # imprime no terminal as cores
 
-        pos_x0 = coord[0]
-        pos_y0 = coord[1]
-        pos_z0 = coord[2]
+        all_points = []
+        for i in range(0, len(coord) - 2, 3):
+            pos_x = coord[i]
+            pos_y = coord[i + 1]
+            pos_z = coord[i + 2]
+            all_points.append((pos_x, pos_y, pos_z))
 
-        for i in range(3, len(coord) - 5, 3):
-            pos_x1 = coord[i]
-            pos_y1 = coord[i + 1]
-            pos_z1 = coord[i + 2]
-            pos_x2 = coord[i + 3]
-            pos_y2 = coord[i + 4]
-            pos_z2 = coord[i + 5]
+        i = 0
+        origin_point = None
 
-            GL.triangleSet([pos_x0, pos_y0, pos_z0, pos_x1, pos_y1, pos_z1, pos_x2, pos_y2, pos_z2], colors)
+        while i < len(coordIndex) - 3:
+            if coordIndex[i] == -1 or coordIndex[i + 1] == -1:
+                origin_point = None
+                i += 1
+                continue
+            
+            if origin_point is None:
+                origin_point = coordIndex[i]
+                i += 1
+                continue
+            
+            p0 = all_points[origin_point]
+            p1 = all_points[coordIndex[i]]
+            p2 = all_points[coordIndex[i + 1]]
+            
+            points = [p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]]
+            print(f'P{origin_point}: {p0}, P{i}: {p1}, P{i+1}: {p2}')
+            
+            GL.triangleSet(points, colors)            
+            i += 1
+
+
 
     @staticmethod
     def box(size, colors):
