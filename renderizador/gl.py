@@ -484,50 +484,49 @@ class GL:
             "TriangleStripSet : colors = {0}".format(colors)
         )  # imprime no terminal as cores
 
-        # Exemplo de desenho de um pixel branco na coordenada 10, 10
-        # gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
+        vertex_index = 0
+        for strip in stripCount:        
+            for i in range(strip - 2):                
+                pos_x1 = point[vertex_index * 3]
+                pos_y1 = point[vertex_index * 3 + 1]
+                pos_z1 = point[vertex_index * 3 + 2]
 
-        # for c in stripCount:
+                pos_x2 = point[(vertex_index + 1) * 3]
+                pos_y2 = point[(vertex_index + 1) * 3 + 1]
+                pos_z2 = point[(vertex_index + 1) * 3 + 2]
 
-        #     i, j = 0, 0
-        #     while i < c - 2:
-        #         pos_x1 = point[j]
-        #         pos_y1 = point[j + 1]
-        #         pos_z1 = point[j + 2]
-        #         pos_x2 = point[j + 3]
-        #         pos_y2 = point[j + 4]
-        #         pos_z2 = point[j + 5]
-        #         pos_x3 = point[j + 6]
-        #         pos_y3 = point[j + 7]
-        #         pos_z3 = point[j + 8]
+                pos_x3 = point[(vertex_index + 2) * 3]
+                pos_y3 = point[(vertex_index + 2) * 3 + 1]
+                pos_z3 = point[(vertex_index + 2) * 3 + 2]
 
-        #         if i % 2 == 0:
-        #             points = [pos_x1, pos_y1, pos_z1, pos_x2, pos_y2, pos_z2, pos_x3, pos_y3, pos_z3]
-        #         else:
-        #             points = [pos_x1, pos_y1, pos_z1, pos_x3, pos_y3, pos_z3, pos_x2, pos_y2, pos_z2]
+                if i % 2 == 0:
+                    points = [pos_x1, pos_y1, pos_z1, pos_x2, pos_y2, pos_z2, pos_x3, pos_y3, pos_z3]
+                else:
+                    points = [pos_x1, pos_y1, pos_z1, pos_x3, pos_y3, pos_z3, pos_x2, pos_y2, pos_z2]
                 
-        #         GL.triangleSet(points, colors)
-        #         i += 1
-        #         j += 3
+                GL.triangleSet(points, colors)                
+                vertex_index += 1
+            
+            vertex_index += 2  # Move to the next set of vertices after this strip
 
 
-        for i in range(0, len(point) - 8, 3):
-            pos_x1 = point[i]
-            pos_y1 = point[i + 1]
-            pos_z1 = point[i + 2]
-            pos_x2 = point[i + 3]
-            pos_y2 = point[i + 4]
-            pos_z2 = point[i + 5]
-            pos_x3 = point[i + 6]
-            pos_y3 = point[i + 7]
-            pos_z3 = point[i + 8]
+        # for i in range(0, len(point) - 8, 3):
+        #     pos_x1 = point[i]
+        #     pos_y1 = point[i + 1]
+        #     pos_z1 = point[i + 2]
+        #     pos_x2 = point[i + 3]
+        #     pos_y2 = point[i + 4]
+        #     pos_z2 = point[i + 5]
+        #     pos_x3 = point[i + 6]
+        #     pos_y3 = point[i + 7]
+        #     pos_z3 = point[i + 8]
 
-            if i % 2 == 0:
-                points = [pos_x1, pos_y1, pos_z1, pos_x2, pos_y2, pos_z2, pos_x3, pos_y3, pos_z3]
-            else:
-                points = [pos_x1, pos_y1, pos_z1, pos_x3, pos_y3, pos_z3, pos_x2, pos_y2, pos_z2]
+        #     if i % 2 == 0:
+        #         points = [pos_x1, pos_y1, pos_z1, pos_x2, pos_y2, pos_z2, pos_x3, pos_y3, pos_z3]
+        #     else:
+        #         points = [pos_x1, pos_y1, pos_z1, pos_x3, pos_y3, pos_z3, pos_x2, pos_y2, pos_z2]
 
-            GL.triangleSet(points, colors)
+        #     GL.triangleSet(points, colors)
         
 
     @staticmethod
