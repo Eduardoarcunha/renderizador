@@ -27,7 +27,6 @@ class GL:
     near = 0.01  # plano de corte próximo
     far = 1000  # plano de corte distante
 
-    inside_triangle_tolerance = 0.00001
 
     perspective_matrix = None
     transformation_stack = []
@@ -272,33 +271,30 @@ class GL:
         # O parâmetro colors é um dicionário com os tipos cores possíveis, para o TriangleSet2D
         # você pode assumir inicialmente o desenho das linhas com a cor emissiva (emissiveColor).
         
-
-        # Exemplo:
-        # gpu.GPU.draw_pixel([6, 8], gpu.GPU.RGB8, [255, 255, 0])  # altera pixel (u, v, tipo, r, g, b)
-
         for i in range(0, len(vertices), 6):
-            pos_x1 = (vertices[i])
-            pos_y1 = (vertices[i + 1])
-            pos_x2 = (vertices[i + 2])
-            pos_y2 = (vertices[i + 3])
-            pos_x3 = (vertices[i + 4])
-            pos_y3 = (vertices[i + 5])
-
-            # print(f'P1: ({pos_x1}, {pos_y1}), P2: ({pos_x2}, {pos_y2}), P3: ({pos_x3}, {pos_y3})')
-            GL.polyline2D(
-                [pos_x1, pos_y1, pos_x2, pos_y2, pos_x3, pos_y3, pos_x1, pos_y1], colors
-            )
+            pos_x1 = int(vertices[i])
+            pos_y1 = int(vertices[i + 1])
+            pos_x2 = int(vertices[i + 2])
+            pos_y2 = int(vertices[i + 3])
+            pos_x3 = int(vertices[i + 4])
+            pos_y3 = int(vertices[i + 5])
 
             l1a, l1b, l1c = l_coef(pos_x1, pos_y1, pos_x2, pos_y2)
             l2a, l2b, l2c = l_coef(pos_x2, pos_y2, pos_x3, pos_y3)
             l3a, l3b, l3c = l_coef(pos_x3, pos_y3, pos_x1, pos_y1)
 
-            for x in range(GL.width):
-                for y in range(GL.height):
+            min_x = max(0, min(pos_x1, pos_x2, pos_x3))
+            max_x = min(GL.width, max(pos_x1, pos_x2, pos_x3) + 1)
+
+            min_y= max(0, min(pos_y1, pos_y2, pos_y3))
+            max_y = min(GL.height, max(pos_y1, pos_y2, pos_y3) + 1)
+
+            for x in range(min_x, max_x):
+                for y in range(min_y, max_y):
                     l1 = l_eval(l1a, l1b, l1c, x, y)
                     l2 = l_eval(l2a, l2b, l2c, x, y)
                     l3 = l_eval(l3a, l3b, l3c, x, y)
-                    if l1 >= GL.inside_triangle_tolerance and l2 >= GL.inside_triangle_tolerance and l3 >= GL.inside_triangle_tolerance:
+                    if l1 >= 0 and l2 >= 0 and l3 >= 0:
                         gpu.GPU.draw_pixel(
                             [int(x), int(y)],
                             gpu.GPU.RGB8,
@@ -451,6 +447,9 @@ class GL:
         transformation_matrix = transform.get_transformation_matrix()
         print(f"\ntransformation: {transformation_matrix}")
 
+        if len(GL.transformation_stack) > 0:
+            transformation_matrix = np.matmul(GL.transformation_stack[-1], transformation_matrix)
+
         GL.transformation_stack.append(transformation_matrix)
 
     @staticmethod
@@ -463,6 +462,7 @@ class GL:
 
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
         print("Saindo de Transform")
+        GL.transformation_stack.pop()
 
     @staticmethod
     def triangleStripSet(point, stripCount, colors):
