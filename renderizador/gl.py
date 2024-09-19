@@ -253,7 +253,6 @@ class GL:
     @staticmethod
     def triangleSet2D(vertices, colors):
         """Função usada para renderizar TriangleSet2D."""
-
         def l_coef(x0, y0, x1, y1):
             A = y1 - y0
             B = -(x1 - x0)
@@ -263,86 +262,73 @@ class GL:
         def l_eval(la, lb, lc, x, y):
             return la * x + lb * y + lc
 
-        # Nessa função você receberá os vertices de um triângulo no parâmetro vertices,
-        # esses pontos são uma lista de pontos x, y sempre na ordem. Assim point[0] é o
-        # valor da coordenada x do primeiro ponto, point[1] o valor y do primeiro ponto.
-        # Já point[2] é a coordenada x do segundo ponto e assim por diante. Assuma que a
-        # quantidade de pontos é sempre multiplo de 3, ou seja, 6 valores ou 12 valores, etc.
-        # O parâmetro colors é um dicionário com os tipos cores possíveis, para o TriangleSet2D
-        # você pode assumir inicialmente o desenho das linhas com a cor emissiva (emissiveColor).
         
         for i in range(0, len(vertices), 6):
-            pos_x1 = int(vertices[i])
-            pos_y1 = int(vertices[i + 1])
-            pos_x2 = int(vertices[i + 2])
-            pos_y2 = int(vertices[i + 3])
-            pos_x3 = int(vertices[i + 4])
-            pos_y3 = int(vertices[i + 5])
+            x0, y0 = int(vertices[i]), int(vertices[i + 1])
+            x1, y1 = int(vertices[i + 2]), int(vertices[i + 3])
+            x2, y2 = int(vertices[i + 4]), int(vertices[i + 5])
 
-            l1a, l1b, l1c = l_coef(pos_x1, pos_y1, pos_x2, pos_y2)
-            l2a, l2b, l2c = l_coef(pos_x2, pos_y2, pos_x3, pos_y3)
-            l3a, l3b, l3c = l_coef(pos_x3, pos_y3, pos_x1, pos_y1)
+            area = abs((x0 * (y1 - y2) + x1 * (y2 - y0) + x2 * (y0 - y1)) / 2)
 
-            min_x = max(0, min(pos_x1, pos_x2, pos_x3))
-            max_x = min(GL.width, max(pos_x1, pos_x2, pos_x3) + 1)
+            l0a, l0b, l0c = l_coef(x0, y0, x1, y1)
+            l1a, l1b, l1c = l_coef(x1, y1, x2, y2)
+            l2a, l2b, l2c = l_coef(x2, y2, x0, y0)
 
-            min_y= max(0, min(pos_y1, pos_y2, pos_y3))
-            max_y = min(GL.height, max(pos_y1, pos_y2, pos_y3) + 1)
+            min_x = max(0, min(x0, x1, x2))
+            max_x = min(GL.width, max(x0, x1, x2) + 1)
+
+            min_y = max(0, min(y0, y1, y2))
+            max_y = min(GL.height, max(y0, y1, y2) + 1)
 
             for x in range(min_x, max_x):
                 for y in range(min_y, max_y):
+                    l0 = l_eval(l0a, l0b, l0c, x, y)
                     l1 = l_eval(l1a, l1b, l1c, x, y)
                     l2 = l_eval(l2a, l2b, l2c, x, y)
-                    l3 = l_eval(l3a, l3b, l3c, x, y)
-                    if l1 >= 0 and l2 >= 0 and l3 >= 0:
+                    if l0 >= 0 and l1 >= 0 and l2 >= 0:
+                        
+                        if "color_per_vertex" in colors:
+                            c0 = colors["color_per_vertex"][i // 2]
+                            c1 = colors["color_per_vertex"][i // 2 + 1]
+                            c2 = colors["color_per_vertex"][i // 2 + 2]
+
+                            a0 = abs(((x+0.5) * (y1 - y2) + x1 * (y2 - (y+0.5)) + x2 * ((y+0.5) - y1)) / 2)
+                            a1 = abs(((x+0.5) * (y2 - y0) + x2 * (y0 - (y+0.5)) + x0 * ((y+0.5) - y2)) / 2)
+                            
+                            alpha = min(max(a0 / area, 0), 1)
+                            beta = min(max(a1 / area, 0), 1)
+                            gamma = 1 - alpha - beta
+
+                            color = [alpha * c0[0] + beta * c1[0] + gamma * c2[0], 
+                                     alpha * c0[1] + beta * c1[1] + gamma * c2[1], 
+                                     alpha * c0[2] + beta * c1[2] + gamma * c2[2]]
+                        else:
+                            color = colors["emissiveColor"]
+
                         gpu.GPU.draw_pixel(
                             [int(x), int(y)],
                             gpu.GPU.RGB8,
                             [
-                                int(colors["emissiveColor"][0] * 255),
-                                int(colors["emissiveColor"][1] * 255),
-                                int(colors["emissiveColor"][2] * 255),
+                                int(color[0] * 255),
+                                int(color[1] * 255),
+                                int(color[2] * 255),
                             ],
                         )
+            print(f'Color: {colors}')
 
     @staticmethod
     def triangleSet(point, colors):
         """Função usada para renderizar TriangleSet."""
-        # https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html#TriangleSet
-        # Nessa função você receberá pontos no parâmetro point, esses pontos são uma lista
-        # de pontos x, y, e z sempre na ordem. Assim point[0] é o valor da coordenada x do
-        # primeiro ponto, point[1] o valor y do primeiro ponto, point[2] o valor z da
-        # coordenada z do primeiro ponto. Já point[3] é a coordenada x do segundo ponto e
-        # assim por diante.
-        # No TriangleSet os triângulos são informados individualmente, assim os três
-        # primeiros pontos definem um triângulo, os três próximos pontos definem um novo
-        # triângulo, e assim por diante.
-        # O parâmetro colors é um dicionário com os tipos cores possíveis, você pode assumir
-        # inicialmente, para o TriangleSet, o desenho das linhas com a cor emissiva
-        # (emissiveColor), conforme implementar novos materias você deverá suportar outros
-        # tipos de cores.
-
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        # print("TriangleSet : pontos = {0}".format(point))  # imprime no terminal pontos
-        # print(
-        #     "TriangleSet : colors = {0}".format(colors)
-        # ) 
 
         for i in range(0, len(point), 9):
-            pos_x1 = point[i]
-            pos_y1 = point[i + 1]
-            pos_z1 = point[i + 2]
-            pos_x2 = point[i + 3]
-            pos_y2 = point[i + 4]
-            pos_z2 = point[i + 5]
-            pos_x3 = point[i + 6]
-            pos_y3 = point[i + 7]
-            pos_z3 = point[i + 8]
+            x0, y0, z0 = point[i], point[i + 1], point[i + 2]
+            x1, y1, z1 = point[i + 3], point[i + 4], point[i + 5]
+            x2, y2, z2 = point[i + 6], point[i + 7], point[i + 8]
 
             points_matrix = np.array([
-                [pos_x1, pos_x2, pos_x3], 
-                [pos_y1, pos_y2, pos_y3], 
-                [pos_z1, pos_z2, pos_z3], 
+                [x0, x1, x2], 
+                [y0, y1, y2], 
+                [z0, z1, z2], 
                 [1, 1, 1]])
             
             transformed_points = np.matmul(GL.transformation_stack[-1], points_matrix)
@@ -363,7 +349,6 @@ class GL:
                 points.append(screen_points[0][j])
                 points.append(screen_points[1][j])
 
-            # print(f'Points: {points}')
             GL.triangleSet2D(points, colors)
 
 
@@ -490,47 +475,20 @@ class GL:
 
         vertex_index = 0
         for strip in stripCount:        
-            for i in range(strip - 2):                
-                pos_x1 = point[vertex_index * 3]
-                pos_y1 = point[vertex_index * 3 + 1]
-                pos_z1 = point[vertex_index * 3 + 2]
-
-                pos_x2 = point[(vertex_index + 1) * 3]
-                pos_y2 = point[(vertex_index + 1) * 3 + 1]
-                pos_z2 = point[(vertex_index + 1) * 3 + 2]
-
-                pos_x3 = point[(vertex_index + 2) * 3]
-                pos_y3 = point[(vertex_index + 2) * 3 + 1]
-                pos_z3 = point[(vertex_index + 2) * 3 + 2]
+            for i in range(strip - 2):       
+                x0, y0, z0 = point[vertex_index * 3], point[vertex_index * 3 + 1], point[vertex_index * 3 + 2]         
+                x1, y1, z1 = point[(vertex_index + 1) * 3], point[(vertex_index + 1) * 3 + 1], point[(vertex_index + 1) * 3 + 2]
+                x2, y2, z2 = point[(vertex_index + 2) * 3], point[(vertex_index + 2) * 3 + 1], point[(vertex_index + 2) * 3 + 2]
 
                 if i % 2 == 0:
-                    points = [pos_x1, pos_y1, pos_z1, pos_x2, pos_y2, pos_z2, pos_x3, pos_y3, pos_z3]
+                    points = [x0, y0, z0, x1, y1, z1, x2, y2, z2]
                 else:
-                    points = [pos_x1, pos_y1, pos_z1, pos_x3, pos_y3, pos_z3, pos_x2, pos_y2, pos_z2]
+                    points = [x0, y0, z0, x2, y2, z2, x1, y1, z1]
                 
                 GL.triangleSet(points, colors)                
                 vertex_index += 1
             
-            vertex_index += 2  # Move to the next set of vertices after this strip
-
-
-        # for i in range(0, len(point) - 8, 3):
-        #     pos_x1 = point[i]
-        #     pos_y1 = point[i + 1]
-        #     pos_z1 = point[i + 2]
-        #     pos_x2 = point[i + 3]
-        #     pos_y2 = point[i + 4]
-        #     pos_z2 = point[i + 5]
-        #     pos_x3 = point[i + 6]
-        #     pos_y3 = point[i + 7]
-        #     pos_z3 = point[i + 8]
-
-        #     if i % 2 == 0:
-        #         points = [pos_x1, pos_y1, pos_z1, pos_x2, pos_y2, pos_z2, pos_x3, pos_y3, pos_z3]
-        #     else:
-        #         points = [pos_x1, pos_y1, pos_z1, pos_x3, pos_y3, pos_z3, pos_x2, pos_y2, pos_z2]
-
-        #     GL.triangleSet(points, colors)
+            vertex_index += 2
         
 
     @staticmethod
@@ -550,20 +508,15 @@ class GL:
         # todos no sentido horário ou todos no sentido anti-horário, conforme especificado.
 
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        print(
-            "IndexedTriangleStripSet : pontos = {0}, index = {1}".format(point, index)
-        )
-        print(
-            "IndexedTriangleStripSet : colors = {0}".format(colors)
-        )  # imprime as cores
+        print(f'IndexedTriangleStripSet : pontos = {point}, index = {index}')
+        print(f'IndexedTriangleStripSet : colors = {colors}')
 
         all_points = []
         for i in range(0, len(point) - 2, 3):
-            pos_x = point[i]
-            pos_y = point[i + 1]
-            pos_z = point[i + 2]
-            all_points.append((pos_x, pos_y, pos_z))
-
+            x = point[i]
+            y = point[i + 1]
+            z = point[i + 2]
+            all_points.append((x, y, z))
 
         i = 0
         while i < len(index) - 2:
@@ -616,37 +569,29 @@ class GL:
         # cor da textura conforme a posição do mapeamento. Dentro da classe GPU já está
         # implementadado um método para a leitura de imagens.
 
-        # Os prints abaixo são só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        print("IndexedFaceSet : ")
-        if coord:
-            print("\tpontos(x, y, z) = {0}, coordIndex = {1}".format(coord, coordIndex))
-        print("colorPerVertex = {0}".format(colorPerVertex))
-        if colorPerVertex and color and colorIndex:
-            print("\tcores(r, g, b) = {0}, colorIndex = {1}".format(color, colorIndex))
-        if texCoord and texCoordIndex:
-            print(
-                "\tpontos(u, v) = {0}, texCoordIndex = {1}".format(
-                    texCoord, texCoordIndex
-                )
-            )
+        print("IndexedFaceSet: ")
+        if coord: print(f'Pontos: {coord}, coordIndex: {coordIndex}')
+        if colorPerVertex and color and colorIndex: print(f'Cores: {color}, colorIndex: {colorIndex}')
+        if texCoord and texCoordIndex: print(f'Texturas: {texCoord}, texCoordIndex: {texCoordIndex}')
         if current_texture:
             image = gpu.GPU.load_texture(current_texture[0])
             print("\t Matriz com image = {0}".format(image))
             print("\t Dimensões da image = {0}".format(image.shape))
         print(
             "IndexedFaceSet : colors = {0}".format(colors)
-        )  # imprime no terminal as cores
+        )
 
-        all_points = []
+        all_points, all_colors = [], []
+
         for i in range(0, len(coord) - 2, 3):
-            pos_x = coord[i]
-            pos_y = coord[i + 1]
-            pos_z = coord[i + 2]
-            all_points.append((pos_x, pos_y, pos_z))
+            x, y, z = coord[i], coord[i + 1], coord[i + 2]
+            all_points.append((x, y, z))
 
-        i = 0
-        origin_point = None
+            if colorPerVertex and color and colorIndex:
+                c0, c1, c2 = color[i], color[i + 1], color[i + 2]
+                all_colors.append((c0, c1, c2))
 
+        i, origin_point = 0, None
         while i < len(coordIndex) - 1:
             if coordIndex[i] == -1 or coordIndex[i + 1] == -1:
                 origin_point = None
@@ -658,12 +603,12 @@ class GL:
                 i += 1
                 continue
             
-            p0 = all_points[origin_point]
-            p1 = all_points[coordIndex[i]]
-            p2 = all_points[coordIndex[i + 1]]
-            
+            p0, p1, p2 = all_points[origin_point], all_points[coordIndex[i]], all_points[coordIndex[i + 1]]
             points = [p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]]
-            # print(f'P{origin_point}: {p0}, P{i}: {p1}, P{i+1}: {p2}')
+
+            if colorPerVertex and color and colorIndex:
+                c0, c1, c2 = all_colors[origin_point], all_colors[coordIndex[i]], all_colors[coordIndex[i + 1]]
+                colors["color_per_vertex"] = [c0, c1, c2]
             
             GL.triangleSet(points, colors)
             i += 1
