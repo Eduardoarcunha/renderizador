@@ -251,7 +251,7 @@ class GL:
                 )
 
     @staticmethod
-    def triangleSet2D(vertices, colors):
+    def triangleSet2D(vertices, colors, three_d=False):
         """Função usada para renderizar TriangleSet2D."""
         def l_coef(x0, y0, x1, y1):
             A = y1 - y0
@@ -261,12 +261,46 @@ class GL:
 
         def l_eval(la, lb, lc, x, y):
             return la * x + lb * y + lc
-
         
-        for i in range(0, len(vertices), 6):
-            x0, y0 = int(vertices[i]), int(vertices[i + 1])
-            x1, y1 = int(vertices[i + 2]), int(vertices[i + 3])
-            x2, y2 = int(vertices[i + 4]), int(vertices[i + 5])
+        def get_weights(x, y, x0, y0, x1, y1, x2, y2):
+                a0 = abs(((x+0.5) * (y1 - y2) + x1 * (y2 - (y+0.5)) + x2 * ((y+0.5) - y1)) / 2)
+                a1 = abs(((x+0.5) * (y2 - y0) + x2 * (y0 - (y+0.5)) + x0 * ((y+0.5) - y2)) / 2)
+                
+                alpha = min(max(a0 / area, 0), 1)
+                beta = min(max(a1 / area, 0), 1)
+                gamma = 1 - alpha - beta
+
+                return alpha, beta, gamma
+    
+        
+        def get_pixel_color(z, A, B, C, colors):
+            if "color_per_vertex" not in colors:
+                return colors["emissiveColor"]
+
+            c0 = colors["color_per_vertex"][i // 2]
+            c1 = colors["color_per_vertex"][i // 2 + 1]
+            c2 = colors["color_per_vertex"][i // 2 + 2]
+
+            color = [
+                z * (A * c0[0] + B * c1[0] + C * c2[0]), 
+                z * (A * c0[1] + B * c1[1] + C * c2[1]), 
+                z * (A * c0[2] + B * c1[2] + C * c2[2])
+            ]
+        
+            return color
+
+
+        step = 9 if three_d else 6
+        for i in range(0, len(vertices), step):
+            if three_d:
+                x0, y0, z0 = int(vertices[i]), int(vertices[i + 1]), abs((vertices[i + 2]))
+                x1, y1, z1 = int(vertices[i + 3]), int(vertices[i + 4]), abs((vertices[i + 5]))
+                x2, y2, z2 = int(vertices[i + 6]), int(vertices[i + 7]), abs((vertices[i + 8]))
+            else:
+                x0, y0, z0 = int(vertices[i]), int(vertices[i + 1]), 1
+                x1, y1, z1 = int(vertices[i + 2]), int(vertices[i + 3]), 1
+                x2, y2, z2 = int(vertices[i + 4]), int(vertices[i + 5]), 1
+
 
             area = abs((x0 * (y1 - y2) + x1 * (y2 - y0) + x2 * (y0 - y1)) / 2)
 
@@ -280,6 +314,7 @@ class GL:
             min_y = max(0, min(y0, y1, y2))
             max_y = min(GL.height, max(y0, y1, y2) + 1)
 
+            # Draw Triangle
             for x in range(min_x, max_x):
                 for y in range(min_y, max_y):
                     l0 = l_eval(l0a, l0b, l0c, x, y)
@@ -287,34 +322,24 @@ class GL:
                     l2 = l_eval(l2a, l2b, l2c, x, y)
                     if l0 >= 0 and l1 >= 0 and l2 >= 0:
                         
-                        if "color_per_vertex" in colors:
-                            c0 = colors["color_per_vertex"][i // 2]
-                            c1 = colors["color_per_vertex"][i // 2 + 1]
-                            c2 = colors["color_per_vertex"][i // 2 + 2]
+                        alpha, beta, gamma = get_weights(x, y, x0, y0, x1, y1, x2, y2)
 
-                            a0 = abs(((x+0.5) * (y1 - y2) + x1 * (y2 - (y+0.5)) + x2 * ((y+0.5) - y1)) / 2)
-                            a1 = abs(((x+0.5) * (y2 - y0) + x2 * (y0 - (y+0.5)) + x0 * ((y+0.5) - y2)) / 2)
-                            
-                            alpha = min(max(a0 / area, 0), 1)
-                            beta = min(max(a1 / area, 0), 1)
-                            gamma = 1 - alpha - beta
+                        A = alpha / z0 if z0 != 0 else alpha
+                        B = beta / z1 if z1 != 0 else beta
+                        C = gamma / z2 if z2 != 0 else gamma
 
-                            color = [alpha * c0[0] + beta * c1[0] + gamma * c2[0], 
-                                     alpha * c0[1] + beta * c1[1] + gamma * c2[1], 
-                                     alpha * c0[2] + beta * c1[2] + gamma * c2[2]]
-                        else:
-                            color = colors["emissiveColor"]
+                        z = 1 / (A + B + C) if A + B + C != 0 else 1
+                        color = get_pixel_color(z, A, B, C, colors)
 
                         gpu.GPU.draw_pixel(
                             [int(x), int(y)],
                             gpu.GPU.RGB8,
                             [
-                                int(color[0] * 255),
-                                int(color[1] * 255),
-                                int(color[2] * 255),
+                                max(min(int(color[0] * 255), 255), 0),
+                                max(min(int(color[1] * 255), 255), 0),
+                                max(min(int(color[2] * 255), 255), 0),
                             ],
                         )
-            print(f'Color: {colors}')
 
     @staticmethod
     def triangleSet(point, colors):
@@ -325,6 +350,7 @@ class GL:
             x1, y1, z1 = point[i + 3], point[i + 4], point[i + 5]
             x2, y2, z2 = point[i + 6], point[i + 7], point[i + 8]
 
+
             points_matrix = np.array([
                 [x0, x1, x2], 
                 [y0, y1, y2], 
@@ -332,6 +358,7 @@ class GL:
                 [1, 1, 1]])
             
             transformed_points = np.matmul(GL.transformation_stack[-1], points_matrix)
+            z_transformed = transformed_points[2]
             ndc = np.matmul(GL.perspective_matrix, transformed_points)
             ndc = ndc / ndc[3]
 
@@ -348,8 +375,9 @@ class GL:
             for j in range(0, 3):
                 points.append(screen_points[0][j])
                 points.append(screen_points[1][j])
+                points.append(z_transformed[j])
 
-            GL.triangleSet2D(points, colors)
+            GL.triangleSet2D(points, colors, three_d=True)
 
 
     @staticmethod
