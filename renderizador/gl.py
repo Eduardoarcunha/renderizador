@@ -254,20 +254,25 @@ class GL:
     def triangleSet2D(vertices, colors, textures=None, three_d=False):
         """Função usada para renderizar TriangleSet2D."""
 
-        def get_pixel_texture(alpha, beta, gamma, textures):
-            uv0, uv1, uv2 = textures["uvs"]
-            u0, v0 = uv0[0], uv0[1]
-            u1, v1 = uv1[0], uv1[1]
-            u2, v2 = uv2[0], uv2[1]
+        def get_pixel_texture(alpha, beta, gamma, textures, uvw_primes):
+            u0_prime, u1_prime, u2_prime = uvw_primes['u_primes']
+            v0_prime, v1_prime, v2_prime = uvw_primes['v_primes']
+            w0_prime, w1_prime, w2_prime = uvw_primes['w_primes']
 
-            u = alpha * u0 + beta * u1 + gamma * u2
-            v = alpha * v0 + beta * v1 + gamma * v2
+            u_prime = alpha * u0_prime + beta * u1_prime + gamma * u2_prime
+            v_prime = alpha * v0_prime + beta * v1_prime + gamma * v2_prime
+            w_prime = alpha * w0_prime + beta * w1_prime + gamma * w2_prime
+
+            u = u_prime / w_prime
+            v = v_prime / w_prime
 
             img_width, img_height = len(textures["image"]), len(textures["image"][0])
             u = int(u * img_width) % img_width
-            v = 1 - int(v * img_height) % img_height
+            v = int((1 - v) * img_height) % img_height
 
             return textures["image"][u][v][:3]
+
+
 
         def get_pixel_color(triangle, alpha, beta, gamma, colors, i):
             z0, z1, z2 = triangle.p0.z, triangle.p1.z, triangle.p2.z
@@ -279,7 +284,7 @@ class GL:
             z = 1 / (A + B + C) if A + B + C != 0 else 1
 
             if "color_per_vertex" not in colors:
-                return colors["emissiveColor"]
+                return [colors["emissiveColor"][0] * 255, colors["emissiveColor"][1] * 255, colors["emissiveColor"][2] * 255]
 
             c0 = colors["color_per_vertex"][i // 2]
             c1 = colors["color_per_vertex"][i // 2 + 1]
@@ -297,32 +302,57 @@ class GL:
                 max(min(int(color[2] * 255), 255), 0),
             ]
 
-        step = 9 if three_d else 6
+        step = 12 if three_d else 6
         for i in range(0, len(vertices), step):
             if three_d:
-                x0, y0, z0 = int(vertices[i]), int(vertices[i + 1]), abs((vertices[i + 2]))
-                x1, y1, z1 = int(vertices[i + 3]), int(vertices[i + 4]), abs((vertices[i + 5]))
-                x2, y2, z2 = int(vertices[i + 6]), int(vertices[i + 7]), abs((vertices[i + 8]))
+                x0, y0, z0, w0 = vertices[i], vertices[i + 1], vertices[i + 2], vertices[i + 3]
+                x1, y1, z1, w1 = vertices[i + 4], vertices[i + 5], vertices[i + 6], vertices[i + 7]
+                x2, y2, z2, w2 = vertices[i + 8], vertices[i + 9], vertices[i + 10], vertices[i + 11]
             else:
-                x0, y0, z0 = int(vertices[i]), int(vertices[i + 1]), 1
-                x1, y1, z1 = int(vertices[i + 2]), int(vertices[i + 3]), 1
-                x2, y2, z2 = int(vertices[i + 4]), int(vertices[i + 5]), 1
+                x0, y0, z0, w0 = int(vertices[i]), int(vertices[i + 1]), 1, 1
+                x1, y1, z1, w1 = int(vertices[i + 2]), int(vertices[i + 3]), 1, 1
+                x2, y2, z2, w2 = int(vertices[i + 4]), int(vertices[i + 5]), 1, 1
 
             p0, p1, p2 = Point(x0, y0, z0), Point(x1, y1, z1), Point(x2, y2, z2)
             triangle = Triangle(p0, p1, p2)
             
             min_x, max_x, min_y, max_y = triangle.get_bounds_within_screen(GL.width, GL.height)
 
-            # Draw Triangle
+            if textures:
+                # Get UV coordinates at vertices
+                uv0, uv1, uv2 = textures["uvs"]
+                u0, v0 = uv0[0], uv0[1]
+                u1, v1 = uv1[0], uv1[1]
+                u2, v2 = uv2[0], uv2[1]
+
+                # Compute u', v', w' for each vertex
+                u0_prime = u0 / w0
+                v0_prime = v0 / w0
+                w0_prime = 1 / w0
+
+                u1_prime = u1 / w1
+                v1_prime = v1 / w1
+                w1_prime = 1 / w1
+
+                u2_prime = u2 / w2
+                v2_prime = v2 / w2
+                w2_prime = 1 / w2
+
+                # Store these values for access in get_pixel_texture
+                uvw_primes = {
+                    'u_primes': (u0_prime, u1_prime, u2_prime),
+                    'v_primes': (v0_prime, v1_prime, v2_prime),
+                    'w_primes': (w0_prime, w1_prime, w2_prime)
+                }
+
             for x in range(min_x, max_x):
                 for y in range(min_y, max_y):
                     p = Point(x, y, 1) # TODO: Z value
                     if triangle.is_inside(p):
-
                         alpha, beta, gamma = triangle.get_weights(p)
 
                         if textures:
-                            color = get_pixel_texture(alpha, beta, gamma, textures)
+                            color = get_pixel_texture(alpha, beta, gamma, textures, uvw_primes)
                         else:
                             color = get_pixel_color(triangle, alpha, beta, gamma, colors, i)
 
@@ -351,6 +381,7 @@ class GL:
             transformed_points = np.matmul(GL.transformation_stack[-1], points_matrix)
             z_transformed = transformed_points[2]
             ndc = np.matmul(GL.perspective_matrix, transformed_points)
+            w_values = ndc[3]
             ndc = ndc / ndc[3]
 
             transform = Transform()
@@ -364,9 +395,10 @@ class GL:
             
             points = []
             for j in range(0, 3):
-                points.append(screen_points[0][j])
-                points.append(screen_points[1][j])
-                points.append(z_transformed[j])
+                points.append(screen_points[0][j])  # x
+                points.append(screen_points[1][j])  # y
+                points.append(z_transformed[j])     # z
+                points.append(w_values[j])          # w
 
             GL.triangleSet2D(points, colors, textures, three_d=True)
 

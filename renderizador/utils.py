@@ -32,7 +32,7 @@ class Triangle:
         min_y = max(0, min(self.p0.y, self.p1.y, self.p2.y))
         max_y = min(height, max(self.p0.y, self.p1.y, self.p2.y) + 1)
 
-        return min_x, max_x, min_y, max_y
+        return int(min_x), int(max_x), int(min_y), int(max_y)
     
     def l_coef(self, x0, y0, x1, y1):
         A = y1 - y0
