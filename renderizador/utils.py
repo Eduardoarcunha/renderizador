@@ -1,6 +1,70 @@
 import math
 import numpy as np
 
+class Point:
+    def __init__(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
+
+
+class Triangle:
+    def __init__(self, p0:Point, p1:Point, p2:Point):
+        self.p0 = p0
+        self.p1 = p1
+        self.p2 = p2
+
+        self.area = self.get_area()
+
+        self.line0_coeficients = self.l_coef(self.p0.x, self.p0.y, self.p1.x, self.p1.y)
+        self.line1_coeficients = self.l_coef(self.p1.x, self.p1.y, self.p2.x, self.p2.y)
+        self.line2_coeficients = self.l_coef(self.p2.x, self.p2.y, self.p0.x, self.p0.y)
+
+
+
+    def get_area(self):
+        return abs((self.p0.x * (self.p1.y - self.p2.y) + self.p1.x * (self.p2.y - self.p0.y) + self.p2.x * (self.p0.y - self.p1.y)) / 2)
+
+    def get_bounds_within_screen(self, width, height):
+        min_x = max(0, min(self.p0.x, self.p1.x, self.p2.x))
+        max_x = min(width, max(self.p0.x, self.p1.x, self.p2.x) + 1)
+
+        min_y = max(0, min(self.p0.y, self.p1.y, self.p2.y))
+        max_y = min(height, max(self.p0.y, self.p1.y, self.p2.y) + 1)
+
+        return min_x, max_x, min_y, max_y
+    
+    def l_coef(self, x0, y0, x1, y1):
+        A = y1 - y0
+        B = -(x1 - x0)
+        C = y0 * (x1 - x0) - x0 * (y1 - y0)
+        return A, B, C
+
+    def l_eval(self, la, lb, lc, p:Point):
+        return la * p.x + lb * p.y + lc
+    
+    def is_inside(self, point:Point):
+        l0 = self.l_eval(self.line0_coeficients[0], self.line0_coeficients[1], self.line0_coeficients[2], point)
+        l1 = self.l_eval(self.line1_coeficients[0], self.line1_coeficients[1], self.line1_coeficients[2], point)
+        l2 = self.l_eval(self.line2_coeficients[0], self.line2_coeficients[1], self.line2_coeficients[2], point)
+
+        return l0 >= 0 and l1 >= 0 and l2 >= 0
+    
+    def get_weights(self, point:Point):
+        x, y = point.x, point.y
+        x0, y0 = self.p0.x, self.p0.y
+        x1, y1 = self.p1.x, self.p1.y
+        x2, y2 = self.p2.x, self.p2.y
+
+        a0 = abs(((x+0.5) * (y1 - y2) + x1 * (y2 - (y+0.5)) + x2 * ((y+0.5) - y1)) / 2)
+        a1 = abs(((x+0.5) * (y2 - y0) + x2 * (y0 - (y+0.5)) + x0 * ((y+0.5) - y2)) / 2)
+    
+        alpha = min(max(a0 / self.area, 0), 1) if self.area != 0 else 1/3
+        beta = min(max(a1 / self.area, 0), 1) if self.area != 0 else 1/3
+        gamma = 1 - alpha - beta if self.area != 0 else 1/3
+
+        return alpha, beta, gamma
+
 
 class Transform:
     """Class to handle 3D transformations."""

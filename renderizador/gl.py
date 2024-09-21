@@ -16,7 +16,7 @@ import gpu  # Simula os recursos de uma GPU
 import math  # Funções matemáticas
 import numpy as np  # Biblioteca do Numpy
 
-from utils import Transform
+from utils import Transform, Point, Triangle
 
 
 class GL:
@@ -251,29 +251,33 @@ class GL:
                 )
 
     @staticmethod
-    def triangleSet2D(vertices, colors, three_d=False):
+    def triangleSet2D(vertices, colors, textures=None, three_d=False):
         """Função usada para renderizar TriangleSet2D."""
-        def l_coef(x0, y0, x1, y1):
-            A = y1 - y0
-            B = -(x1 - x0)
-            C = y0 * (x1 - x0) - x0 * (y1 - y0)
-            return A, B, C
 
-        def l_eval(la, lb, lc, x, y):
-            return la * x + lb * y + lc
-        
-        def get_weights(x, y, x0, y0, x1, y1, x2, y2):
-                a0 = abs(((x+0.5) * (y1 - y2) + x1 * (y2 - (y+0.5)) + x2 * ((y+0.5) - y1)) / 2)
-                a1 = abs(((x+0.5) * (y2 - y0) + x2 * (y0 - (y+0.5)) + x0 * ((y+0.5) - y2)) / 2)
-                
-                alpha = min(max(a0 / area, 0), 1)
-                beta = min(max(a1 / area, 0), 1)
-                gamma = 1 - alpha - beta
+        def get_pixel_texture(alpha, beta, gamma, textures):
+            uv0, uv1, uv2 = textures["uvs"]
+            u0, v0 = uv0[0], uv0[1]
+            u1, v1 = uv1[0], uv1[1]
+            u2, v2 = uv2[0], uv2[1]
 
-                return alpha, beta, gamma
-    
-        
-        def get_pixel_color(z, A, B, C, colors):
+            u = alpha * u0 + beta * u1 + gamma * u2
+            v = alpha * v0 + beta * v1 + gamma * v2
+
+            img_width, img_height = len(textures["image"]), len(textures["image"][0])
+            u = int(u * img_width) % img_width
+            v = 1 - int(v * img_height) % img_height
+
+            return textures["image"][u][v][:3]
+
+        def get_pixel_color(triangle, alpha, beta, gamma, colors, i):
+            z0, z1, z2 = triangle.p0.z, triangle.p1.z, triangle.p2.z
+
+            A = alpha / z0 if z0 != 0 else alpha
+            B = beta / z1 if z1 != 0 else beta
+            C = gamma / z2 if z2 != 0 else gamma
+
+            z = 1 / (A + B + C) if A + B + C != 0 else 1
+
             if "color_per_vertex" not in colors:
                 return colors["emissiveColor"]
 
@@ -286,9 +290,12 @@ class GL:
                 z * (A * c0[1] + B * c1[1] + C * c2[1]), 
                 z * (A * c0[2] + B * c1[2] + C * c2[2])
             ]
-        
-            return color
 
+            return [
+                max(min(int(color[0] * 255), 255), 0),
+                max(min(int(color[1] * 255), 255), 0),
+                max(min(int(color[2] * 255), 255), 0),
+            ]
 
         step = 9 if three_d else 6
         for i in range(0, len(vertices), step):
@@ -301,48 +308,32 @@ class GL:
                 x1, y1, z1 = int(vertices[i + 2]), int(vertices[i + 3]), 1
                 x2, y2, z2 = int(vertices[i + 4]), int(vertices[i + 5]), 1
 
-
-            area = abs((x0 * (y1 - y2) + x1 * (y2 - y0) + x2 * (y0 - y1)) / 2)
-
-            l0a, l0b, l0c = l_coef(x0, y0, x1, y1)
-            l1a, l1b, l1c = l_coef(x1, y1, x2, y2)
-            l2a, l2b, l2c = l_coef(x2, y2, x0, y0)
-
-            min_x = max(0, min(x0, x1, x2))
-            max_x = min(GL.width, max(x0, x1, x2) + 1)
-
-            min_y = max(0, min(y0, y1, y2))
-            max_y = min(GL.height, max(y0, y1, y2) + 1)
+            p0, p1, p2 = Point(x0, y0, z0), Point(x1, y1, z1), Point(x2, y2, z2)
+            triangle = Triangle(p0, p1, p2)
+            
+            min_x, max_x, min_y, max_y = triangle.get_bounds_within_screen(GL.width, GL.height)
 
             # Draw Triangle
             for x in range(min_x, max_x):
                 for y in range(min_y, max_y):
-                    l0 = l_eval(l0a, l0b, l0c, x, y)
-                    l1 = l_eval(l1a, l1b, l1c, x, y)
-                    l2 = l_eval(l2a, l2b, l2c, x, y)
-                    if l0 >= 0 and l1 >= 0 and l2 >= 0:
-                        
-                        alpha, beta, gamma = get_weights(x, y, x0, y0, x1, y1, x2, y2)
+                    p = Point(x, y, 1) # TODO: Z value
+                    if triangle.is_inside(p):
 
-                        A = alpha / z0 if z0 != 0 else alpha
-                        B = beta / z1 if z1 != 0 else beta
-                        C = gamma / z2 if z2 != 0 else gamma
+                        alpha, beta, gamma = triangle.get_weights(p)
 
-                        z = 1 / (A + B + C) if A + B + C != 0 else 1
-                        color = get_pixel_color(z, A, B, C, colors)
+                        if textures:
+                            color = get_pixel_texture(alpha, beta, gamma, textures)
+                        else:
+                            color = get_pixel_color(triangle, alpha, beta, gamma, colors, i)
 
                         gpu.GPU.draw_pixel(
                             [int(x), int(y)],
                             gpu.GPU.RGB8,
-                            [
-                                max(min(int(color[0] * 255), 255), 0),
-                                max(min(int(color[1] * 255), 255), 0),
-                                max(min(int(color[2] * 255), 255), 0),
-                            ],
+                            [color[0], color[1], color[2]],
                         )
 
     @staticmethod
-    def triangleSet(point, colors):
+    def triangleSet(point, colors, textures=None):
         """Função usada para renderizar TriangleSet."""
 
         for i in range(0, len(point), 9):
@@ -377,7 +368,7 @@ class GL:
                 points.append(screen_points[1][j])
                 points.append(z_transformed[j])
 
-            GL.triangleSet2D(points, colors, three_d=True)
+            GL.triangleSet2D(points, colors, textures, three_d=True)
 
 
     @staticmethod
@@ -597,19 +588,22 @@ class GL:
         # cor da textura conforme a posição do mapeamento. Dentro da classe GPU já está
         # implementadado um método para a leitura de imagens.
 
-        print("IndexedFaceSet: ")
-        if coord: print(f'Pontos: {coord}, coordIndex: {coordIndex}')
-        if colorPerVertex and color and colorIndex: print(f'Cores: {color}, colorIndex: {colorIndex}')
-        if texCoord and texCoordIndex: print(f'Texturas: {texCoord}, texCoordIndex: {texCoordIndex}')
+        # print("IndexedFaceSet: ")
+        textures = None
+        # if coord: print(f'Pontos: {coord}, coordIndex: {coordIndex}')
+        # if colorPerVertex and color and colorIndex: print(f'Cores: {color}, colorIndex: {colorIndex}')
+        # if texCoord and texCoordIndex: print(f'Texturas: {texCoord}, texCoordIndex: {texCoordIndex}')
         if current_texture:
             image = gpu.GPU.load_texture(current_texture[0])
-            print("\t Matriz com image = {0}".format(image))
-            print("\t Dimensões da image = {0}".format(image.shape))
-        print(
-            "IndexedFaceSet : colors = {0}".format(colors)
-        )
+            # print(f'Matriz com imagem = {image}')
+            # print(f'Dimensões da image = {image.shape}')
+            textures = {"image": image}
 
-        all_points, all_colors = [], []
+
+        # print(f'IndexedFaceSet : colors = {colors}')
+
+
+        all_points, all_colors, all_uvs = [], [], []
 
         for i in range(0, len(coord) - 2, 3):
             x, y, z = coord[i], coord[i + 1], coord[i + 2]
@@ -618,6 +612,11 @@ class GL:
             if colorPerVertex and color and colorIndex:
                 c0, c1, c2 = color[i], color[i + 1], color[i + 2]
                 all_colors.append((c0, c1, c2))
+
+        if texCoord and texCoordIndex:
+            for i in range(0, len(texCoord) - 1, 2):
+                u, v = texCoord[i], texCoord[i + 1]
+                all_uvs.append((u, v))
 
         i, origin_point = 0, None
         while i < len(coordIndex) - 1:
@@ -637,8 +636,13 @@ class GL:
             if colorPerVertex and color and colorIndex:
                 c0, c1, c2 = all_colors[origin_point], all_colors[coordIndex[i]], all_colors[coordIndex[i + 1]]
                 colors["color_per_vertex"] = [c0, c1, c2]
+
+            if texCoord and texCoordIndex:
+                uv0, uv1, uv2 = all_uvs[origin_point], all_uvs[coordIndex[i]], all_uvs[coordIndex[i + 1]]
+                textures["uvs"] = [uv0, uv1, uv2]
+
             
-            GL.triangleSet(points, colors)
+            GL.triangleSet(points, colors, textures)
             i += 1
 
 
