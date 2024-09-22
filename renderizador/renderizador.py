@@ -9,6 +9,8 @@ Disciplina: Computação Gráfica
 Data: 28 de Agosto de 2020
 """
 
+import numpy as np
+
 import os           # Para rotinas do sistema operacional
 import argparse     # Para tratar os parâmetros da linha de comando
 
@@ -27,10 +29,12 @@ ALTURA = 40   # Valor padrão para altura da tela
 class Renderizador:
     """Realiza a renderização da cena informada."""
 
-    def __init__(self):
+    def __init__(self, supersampling_factor=4):
         """Definindo valores padrão."""
+        self.supersampling_factor = supersampling_factor
         self.width = LARGURA
         self.height = ALTURA
+
         self.x3d_file = ""
         self.image_file = "tela.png"
         self.scene = None
@@ -41,13 +45,15 @@ class Renderizador:
         # Configurando color buffers para exibição na tela
 
         # Cria uma (1) posição de FrameBuffer na GPU
-        fbo = gpu.GPU.gen_framebuffers(1)
+        fbo = gpu.GPU.gen_framebuffers(2)
+        print(f'Framebuffers: {fbo}')
 
         # Define o atributo FRONT como o FrameBuffe principal
         self.framebuffers["FRONT"] = fbo[0]
+        self.framebuffers["SUPERSAMPLING"] = fbo[1]
 
         # Define que a posição criada será usada para desenho e leitura
-        gpu.GPU.bind_framebuffer(gpu.GPU.FRAMEBUFFER, self.framebuffers["FRONT"])
+        gpu.GPU.bind_framebuffer(gpu.GPU.FRAMEBUFFER, self.framebuffers["SUPERSAMPLING"])
         # Opções:
         # - DRAW_FRAMEBUFFER: Faz o bind só para escrever no framebuffer
         # - READ_FRAMEBUFFER: Faz o bind só para leitura no framebuffer
@@ -62,6 +68,14 @@ class Renderizador:
             gpu.GPU.RGB8,
             self.width,
             self.height
+        )
+
+        gpu.GPU.framebuffer_storage(
+            self.framebuffers["SUPERSAMPLING"],
+            gpu.GPU.COLOR_ATTACHMENT,
+            gpu.GPU.RGB8,
+            self.width * self.supersampling_factor,
+            self.height * self.supersampling_factor
         )
 
         # Descomente as seguintes linhas se for usar um Framebuffer para profundidade
@@ -95,6 +109,7 @@ class Renderizador:
         self.scene.viewport(width=self.width, height=self.height)
 
     def pre(self):
+        print(f'Pre renderização: {self.width}x{self.height}')
         """Rotinas pré renderização."""
         # Função invocada antes do processo de renderização iniciar.
 
@@ -106,11 +121,66 @@ class Renderizador:
         # Retorna o valor do pixel no framebuffer: read_pixel(coord, mode)
 
     def pos(self):
+        print('Pós renderização')
+    
         """Rotinas pós renderização."""
         # Função invocada após o processo de renderização terminar.
 
+        supersampled_framebuffer = gpu.GPU.get_frame_buffer() # Get no super sample
+        # with open("supersampled_framebuffer.txt", "w") as file:
+        #     for y in range(self.height * self.supersampling_factor):
+        #         for x in range(self.width * self.supersampling_factor):
+        #             file.write(f'{supersampled_framebuffer[y][x]}\n')
+
+        # gpu.GPU.bind_framebuffer(gpu.GPU.FRAMEBUFFER, self.framebuffers["FRONT"])
+        # gpu.GPU.clear_buffer()
+        # self.downsample(supersampled_framebuffer)
+        
+        # normal_framebuffer = gpu.GPU.get_frame_buffer() # Get no normal
+        # with open("normal_framebuffer.txt", "w") as file:
+        #     for y in range(self.height):
+        #         for x in range(self.width):
+        #             file.write(f'{normal_framebuffer[y][x]}\n')
+
+
         # Método para a troca dos buffers (NÃO IMPLEMENTADO)
         gpu.GPU.swap_buffers()
+
+
+    def downsample(self, supersampled_framebuffer):
+        """Realiza o downsample do framebuffer."""
+        print(f'Framebuffers shape: {supersampled_framebuffer.shape}')
+        print(f'Downsample: {self.width}x{self.height}')
+        for y in range(self.height):
+            for x in range(self.width):
+                # Calcula a média dos pixels vizinhos usando um tipo de dado maior
+                r = 0
+                g = 0
+                b = 0
+                
+                # Temporarily use a larger data type for accumulation
+                r_acc = np.int32(0)
+                g_acc = np.int32(0)
+                b_acc = np.int32(0)
+                
+                for i in range(self.supersampling_factor):
+                    for j in range(self.supersampling_factor):
+                        r_acc += np.int32(supersampled_framebuffer[y * self.supersampling_factor + i][x * self.supersampling_factor + j][0])
+                        g_acc += np.int32(supersampled_framebuffer[y * self.supersampling_factor + i][x * self.supersampling_factor + j][1])
+                        b_acc += np.int32(supersampled_framebuffer[y * self.supersampling_factor + i][x * self.supersampling_factor + j][2])
+                
+                # Perform averaging and cast back to the original data type
+                r = int(r_acc / (self.supersampling_factor ** 2))
+                g = int(g_acc / (self.supersampling_factor ** 2))
+                b = int(b_acc / (self.supersampling_factor ** 2))
+                
+                # Ensure values stay within [0, 255]
+                r = max(0, min(255, r))
+                g = max(0, min(255, g))
+                b = max(0, min(255, b))
+
+                # Define o pixel no framebuffer
+                gpu.GPU.draw_pixel((x, y), gpu.GPU.RGB8, [r, g, b])
 
     def mapping(self):
         """Mapeamento de funções para as rotinas de renderização."""
@@ -174,8 +244,8 @@ class Renderizador:
 
         # Iniciando Biblioteca Gráfica
         gl.GL.setup(
-            self.width,
-            self.height,
+            self.width * self.supersampling_factor,
+            self.height * self.supersampling_factor,
             near=0.01,
             far=1000
         )
