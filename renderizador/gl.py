@@ -27,18 +27,22 @@ class GL:
     near = 0.01  # plano de corte próximo
     far = 1000  # plano de corte distante
 
+    two_d_width = 30
+    two_d_height = 20
+
 
     perspective_matrix = None
     transformation_stack = []
 
     @staticmethod
-    def setup(width, height, near=0.01, far=1000):
+    def setup(width, height, supersampling_factor, near=0.01, far=1000):
         """Definr parametros para câmera de razão de aspecto, plano próximo e distante."""
         GL.width = width
         GL.height = height
+        GL.supersampling_factor = supersampling_factor
         GL.near = near
         GL.far = far
-
+        
     @staticmethod
     def polypoint2D(point, colors):
         """Função usada para renderizar Polypoint2D."""
@@ -62,8 +66,8 @@ class GL:
         # cuidado com as cores, o X3D especifica de (0,1) e o Framebuffer de (0,255)
 
         for i in range(0, len(point), 2):
-            pos_x = int(point[i])
-            pos_y = int(point[i + 1])
+            pos_x = int(point[i]) * GL.supersampling_factor
+            pos_y = int(point[i + 1]) * GL.supersampling_factor
             point_color = colors["emissiveColor"]
             # print("Ponto ({0}, {1}) com a cor {2}".format(pos_x, pos_y, point_color))
             gpu.GPU.draw_pixel(
@@ -174,11 +178,11 @@ class GL:
 
         # print("Polyline2D : lineSegments = {0}".format(lineSegments)) # imprime no terminal
 
-        pos_x = int(lineSegments[0])
-        pos_y = int(lineSegments[1])
+        pos_x = int(lineSegments[0]) * GL.supersampling_factor
+        pos_y = int(lineSegments[1]) * GL.supersampling_factor
         for i in range(2, len(lineSegments), 2):
-            pos_x2 = int(lineSegments[i])
-            pos_y2 = int(lineSegments[i + 1])
+            pos_x2 = int(lineSegments[i]) * GL.supersampling_factor
+            pos_y2 = int(lineSegments[i + 1]) * GL.supersampling_factor
             line_color = colors["emissiveColor"]
             bresenham_line(pos_x, pos_y, pos_x2, pos_y2, line_color)
             pos_x = pos_x2
@@ -197,7 +201,7 @@ class GL:
         print("Circle2D : colors = {0}".format(colors))  # imprime no terminal as cores
 
         xc, yc = 0, 0
-        r = int(radius)
+        r = int(radius) * GL.supersampling_factor
         for x in range(-r, r + 1):
             y1 = int(math.sqrt(r**2 - x**2))
             y2 = -y1
@@ -309,9 +313,9 @@ class GL:
                 x1, y1, z1, w1 = vertices[i + 4], vertices[i + 5], vertices[i + 6], vertices[i + 7]
                 x2, y2, z2, w2 = vertices[i + 8], vertices[i + 9], vertices[i + 10], vertices[i + 11]
             else:
-                x0, y0, z0, w0 = int(vertices[i]), int(vertices[i + 1]), 1, 1
-                x1, y1, z1, w1 = int(vertices[i + 2]), int(vertices[i + 3]), 1, 1
-                x2, y2, z2, w2 = int(vertices[i + 4]), int(vertices[i + 5]), 1, 1
+                x0, y0, z0, w0 = int(vertices[i]) * GL.supersampling_factor, int(vertices[i + 1]) * GL.supersampling_factor, 1, 1
+                x1, y1, z1, w1 = int(vertices[i + 2]) * GL.supersampling_factor, int(vertices[i + 3]) * GL.supersampling_factor, 1, 1
+                x2, y2, z2, w2 = int(vertices[i + 4]) * GL.supersampling_factor, int(vertices[i + 5]) * GL.supersampling_factor, 1, 1
 
             p0, p1, p2 = Point(x0, y0, z0), Point(x1, y1, z1), Point(x2, y2, z2)
             triangle = Triangle(p0, p1, p2)

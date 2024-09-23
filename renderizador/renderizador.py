@@ -132,11 +132,11 @@ class Renderizador:
         #         for x in range(self.width * self.supersampling_factor):
         #             file.write(f'{supersampled_framebuffer[y][x]}\n')
 
-        # gpu.GPU.bind_framebuffer(gpu.GPU.FRAMEBUFFER, self.framebuffers["FRONT"])
-        # gpu.GPU.clear_buffer()
-        # self.downsample(supersampled_framebuffer)
+        gpu.GPU.bind_framebuffer(gpu.GPU.FRAMEBUFFER, self.framebuffers["FRONT"])
+        gpu.GPU.clear_buffer()
+        self.downsample(supersampled_framebuffer)
         
-        # normal_framebuffer = gpu.GPU.get_frame_buffer() # Get no normal
+        normal_framebuffer = gpu.GPU.get_frame_buffer() # Get no normal
         # with open("normal_framebuffer.txt", "w") as file:
         #     for y in range(self.height):
         #         for x in range(self.width):
@@ -246,6 +246,7 @@ class Renderizador:
         gl.GL.setup(
             self.width * self.supersampling_factor,
             self.height * self.supersampling_factor,
+            self.supersampling_factor,
             near=0.01,
             far=1000
         )
