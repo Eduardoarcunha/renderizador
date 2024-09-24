@@ -364,6 +364,12 @@ class GL:
                             color = get_pixel_texture(alpha, beta, gamma, textures, uvw_primes)
                         else:
                             color = get_pixel_color(triangle, alpha, beta, gamma, colors, i)
+                            if "transparency" in colors:
+                                transparency = colors["transparency"]
+                                old_color = gpu.GPU.read_pixel([int(x), int(y)], gpu.GPU.RGB8)
+
+                                for c in range(3):
+                                    color[c] = old_color[c] * transparency + color[c] * (1-transparency)
 
                         gpu.GPU.draw_pixel(
                             [int(x), int(y)],
