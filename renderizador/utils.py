@@ -2,10 +2,11 @@ import math
 import numpy as np
 
 class Point:
-    def __init__(self, x, y, z):
+    def __init__(self, x, y, z_camera, z_ndc):
         self.x = x
         self.y = y
-        self.z = z
+        self.z_camera = z_camera
+        self.z_ndc = z_ndc
 
 
 class Triangle:
@@ -50,6 +51,14 @@ class Triangle:
 
         return l0 >= 0 and l1 >= 0 and l2 >= 0
     
+    def get_z(self, alpha, beta, gamma):
+
+        z0, z1, z2 = self.p0.z_ndc, self.p1.z_ndc, self.p2.z_ndc
+        d = ((alpha / z0) + (beta / z1) + (gamma / z2))
+        z = 1 / d
+
+        return z
+    
     def get_weights(self, point:Point):
         x, y = point.x, point.y
         x0, y0 = self.p0.x, self.p0.y
@@ -64,6 +73,12 @@ class Triangle:
         gamma = 1 - alpha - beta if self.area != 0 else 1/3
 
         return alpha, beta, gamma
+    
+    def get_weights_and_z(self, point:Point):
+        alpha, beta, gamma = self.get_weights(point)
+        z = self.get_z(alpha, beta, gamma)
+        return alpha, beta, gamma, z
+
 
 
 class Transform:

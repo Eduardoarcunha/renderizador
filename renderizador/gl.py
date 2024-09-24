@@ -279,7 +279,7 @@ class GL:
 
 
         def get_pixel_color(triangle, alpha, beta, gamma, colors, i):
-            z0, z1, z2 = triangle.p0.z, triangle.p1.z, triangle.p2.z
+            z0, z1, z2 = triangle.p0.z_camera, triangle.p1.z_camera, triangle.p2.z_camera
 
             A = alpha / z0 if z0 != 0 else alpha
             B = beta / z1 if z1 != 0 else beta
@@ -306,18 +306,19 @@ class GL:
                 max(min(int(color[2] * 255), 255), 0),
             ]
 
-        step = 12 if three_d else 6
+        step = 15 if three_d else 6
         for i in range(0, len(vertices), step):
             if three_d:
-                x0, y0, z0, w0 = vertices[i], vertices[i + 1], vertices[i + 2], vertices[i + 3]
-                x1, y1, z1, w1 = vertices[i + 4], vertices[i + 5], vertices[i + 6], vertices[i + 7]
-                x2, y2, z2, w2 = vertices[i + 8], vertices[i + 9], vertices[i + 10], vertices[i + 11]
+                x0, y0, z0_camera, z0_ndc, w0 = vertices[i], vertices[i + 1], vertices[i + 2], vertices[i + 3], vertices[i + 4]
+                x1, y1, z1_camera, z1_ndc, w1 = vertices[i + 5], vertices[i + 6], vertices[i + 7], vertices[i + 8], vertices[i + 9]
+                x2, y2, z2_camera, z2_ndc, w2 = vertices[i + 10], vertices[i + 11], vertices[i + 12], vertices[i + 13], vertices[i + 14]
+                # print(f'Zs: {z0}, {z1}, {z2}')
             else:
-                x0, y0, z0, w0 = int(vertices[i]) * GL.supersampling_factor, int(vertices[i + 1]) * GL.supersampling_factor, 1, 1
-                x1, y1, z1, w1 = int(vertices[i + 2]) * GL.supersampling_factor, int(vertices[i + 3]) * GL.supersampling_factor, 1, 1
-                x2, y2, z2, w2 = int(vertices[i + 4]) * GL.supersampling_factor, int(vertices[i + 5]) * GL.supersampling_factor, 1, 1
+                x0, y0, z0_camera, z0_ndc, w0 = int(vertices[i]) * GL.supersampling_factor, int(vertices[i + 1]) * GL.supersampling_factor, 1, 1, 1
+                x1, y1, z1_camera, z1_ndc, w1 = int(vertices[i + 2]) * GL.supersampling_factor, int(vertices[i + 3]) * GL.supersampling_factor, 1, 1, 1
+                x2, y2, z2_camera, z2_ndc, w2 = int(vertices[i + 4]) * GL.supersampling_factor, int(vertices[i + 5]) * GL.supersampling_factor, 1, 1, 1
 
-            p0, p1, p2 = Point(x0, y0, z0), Point(x1, y1, z1), Point(x2, y2, z2)
+            p0, p1, p2 = Point(x0, y0, z0_camera, z0_ndc), Point(x1, y1, z1_camera, z1_ndc), Point(x2, y2, z2_camera, z2_ndc)
             triangle = Triangle(p0, p1, p2)
             
             min_x, max_x, min_y, max_y = triangle.get_bounds_within_screen(GL.width, GL.height)
@@ -351,9 +352,13 @@ class GL:
 
             for x in range(min_x, max_x):
                 for y in range(min_y, max_y):
-                    p = Point(x, y, 1) # TODO: Z value
+                    p = Point(x, y, 1, 1) # TODO: Z value
                     if triangle.is_inside(p):
-                        alpha, beta, gamma = triangle.get_weights(p)
+                        alpha, beta, gamma, z = triangle.get_weights_and_z(p)
+                        p.z_ndc = z
+
+                        if p.z_ndc > gpu.GPU.read_pixel([int(x), int(y)], gpu.GPU.DEPTH_COMPONENT32F):
+                            continue
 
                         if textures:
                             color = get_pixel_texture(alpha, beta, gamma, textures, uvw_primes)
@@ -366,9 +371,21 @@ class GL:
                             [color[0], color[1], color[2]],
                         )
 
+                        gpu.GPU.draw_pixel(
+                            [int(x), int(y)],
+                            gpu.GPU.DEPTH_COMPONENT32F,
+                            [p.z_ndc],
+                        )
+
     @staticmethod
     def triangleSet(point, colors, textures=None):
         """Função usada para renderizar TriangleSet."""
+
+        # pix = gpu.GPU.read_pixel(
+        #     [0, 0], 
+        #     gpu.GPU.DEPTH_COMPONENT32F
+        # )
+        # print(f"Depth: {pix}")
 
         for i in range(0, len(point), 9):
             x0, y0, z0 = point[i], point[i + 1], point[i + 2]
@@ -383,10 +400,11 @@ class GL:
                 [1, 1, 1]])
             
             transformed_points = np.matmul(GL.transformation_stack[-1], points_matrix)
-            z_transformed = transformed_points[2]
+            z_camera = transformed_points[2]
             ndc = np.matmul(GL.perspective_matrix, transformed_points)
             w_values = ndc[3]
             ndc = ndc / ndc[3]
+            z_ndc = ndc[2]
 
             transform = Transform()
             transform.apply_scale([GL.width / 2, GL.height / 2, 1])
@@ -401,7 +419,8 @@ class GL:
             for j in range(0, 3):
                 points.append(screen_points[0][j])  # x
                 points.append(screen_points[1][j])  # y
-                points.append(z_transformed[j])     # z
+                points.append(z_camera[j])          # z (Colors)
+                points.append(z_ndc[j])             # z (Z Buffer)
                 points.append(w_values[j])          # w
 
             GL.triangleSet2D(points, colors, textures, three_d=True)

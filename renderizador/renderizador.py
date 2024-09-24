@@ -79,13 +79,13 @@ class Renderizador:
         )
 
         # Descomente as seguintes linhas se for usar um Framebuffer para profundidade
-        # gpu.GPU.framebuffer_storage(
-        #     self.framebuffers["FRONT"],
-        #     gpu.GPU.DEPTH_ATTACHMENT,
-        #     gpu.GPU.DEPTH_COMPONENT32F,
-        #     self.width,
-        #     self.height
-        # )
+        gpu.GPU.framebuffer_storage(
+            self.framebuffers["SUPERSAMPLING"],
+            gpu.GPU.DEPTH_ATTACHMENT,
+            gpu.GPU.DEPTH_COMPONENT32F,
+            self.width * self.supersampling_factor,
+            self.height * self.supersampling_factor
+        )
     
         # Opções:
         # - COLOR_ATTACHMENT: alocações para as cores da imagem renderizada
@@ -136,7 +136,7 @@ class Renderizador:
         gpu.GPU.clear_buffer()
         self.downsample(supersampled_framebuffer)
         
-        normal_framebuffer = gpu.GPU.get_frame_buffer() # Get no normal
+        normal_framebuffer = gpu.GPU.get_frame_buffer()
         # with open("normal_framebuffer.txt", "w") as file:
         #     for y in range(self.height):
         #         for x in range(self.width):
