@@ -42,7 +42,7 @@ class Triangle:
         return A, B, C
 
     def l_eval(self, la, lb, lc, p:Point):
-        return la * p.x + lb * p.y + lc
+        return la * (p.x +.5) + lb * (p.y +.5) + lc
     
     def is_inside(self, point:Point):
         l0 = self.l_eval(self.line0_coeficients[0], self.line0_coeficients[1], self.line0_coeficients[2], point)
@@ -207,3 +207,19 @@ class Transform:
     def get_transformation_matrix(self):
         """Return the resulting transformation matrix."""
         return self.transformation_matrix
+
+
+
+def downsample_matrix_with_channels(input_matrix, factor=2):
+    rows, cols, channels = input_matrix.shape
+    
+    # Ensure rows and columns are divisible by the factor, trim if necessary
+    if rows % factor != 0:
+        input_matrix = input_matrix[:rows - (rows % factor), :, :]
+    if cols % factor != 0:
+        input_matrix = input_matrix[:, :cols - (cols % factor), :]
+    
+    # Reshape the matrix into blocks of size factor x factor for each channel and calculate the mean
+    downsampled = np.mean(input_matrix.reshape(rows//factor, factor, cols//factor, factor, channels), axis=(1, 3))
+    
+    return downsampled

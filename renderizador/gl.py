@@ -16,7 +16,7 @@ import gpu  # Simula os recursos de uma GPU
 import math  # Funções matemáticas
 import numpy as np  # Biblioteca do Numpy
 
-from utils import Transform, Point, Triangle
+from utils import Transform, Point, Triangle, downsample_matrix_with_channels
 
 
 class GL:
@@ -29,6 +29,7 @@ class GL:
 
     two_d_width = 30
     two_d_height = 20
+    
 
 
     perspective_matrix = None
@@ -256,25 +257,59 @@ class GL:
 
     @staticmethod
     def triangleSet2D(vertices, colors, textures=None, three_d=False):
+        import pandas as pd
         """Função usada para renderizar TriangleSet2D."""
-
-        def get_pixel_texture(alpha, beta, gamma, textures, uvw_primes):
+        ds = []
+        def get_uv(alpha, beta, gamma, uvw_primes):
             u0_prime, u1_prime, u2_prime = uvw_primes['u_primes']
             v0_prime, v1_prime, v2_prime = uvw_primes['v_primes']
             w0_prime, w1_prime, w2_prime = uvw_primes['w_primes']
 
-            u_prime = alpha * u0_prime + beta * u1_prime + gamma * u2_prime
-            v_prime = alpha * v0_prime + beta * v1_prime + gamma * v2_prime
-            w_prime = alpha * w0_prime + beta * w1_prime + gamma * w2_prime
+            denominator = alpha * w0_prime + beta * w1_prime + gamma * w2_prime
+            if denominator == 0:
+                return 0, 0
 
-            u = u_prime / w_prime
-            v = v_prime / w_prime
+            u = (alpha * u0_prime + beta * u1_prime + gamma * u2_prime) / denominator
+            v = (alpha * v0_prime + beta * v1_prime + gamma * v2_prime) / denominator
 
-            img_width, img_height = len(textures["image"]), len(textures["image"][0])
-            u = int(u * img_width) % img_width
-            v = int((1 - v) * img_height) % img_height
+            return u, v
 
-            return textures["image"][u][v][:3]
+
+        def get_pixel_texture(x, y, uv_matrix):
+            u00, v00 = uv_matrix[y][x]
+            img_width, img_height = len(textures["images"][0]), len(textures["images"][0][0])
+            u = int(u00 * img_width) % img_width
+            v = int((1 - v00) * img_height) % img_height
+
+            if y + 1 >= len(uv_matrix) or x + 1 >= len(uv_matrix[y]):
+                return textures["images"][0][u][v][:3]
+                
+            u01, v01 = uv_matrix[y][x + 1]
+            u10, v10 = uv_matrix[y + 1][x]
+
+            dudx = u01 - u00  # Change in u along x-axis
+            dudy = u10 - u00  # Change in u along y-axis
+            dvdx = v01 - v00  # Change in v along x-axis
+            dvdy = v10 - v00  # Change in v along y-axis
+
+            L = max(math.sqrt(dudx**2 + dvdx**2), math.sqrt(dudy**2 + dvdy**2))
+            if L <= 0:
+                D = 0
+            else:
+                D = int(math.log2(L))
+                D = max(0, D)
+            # Clamp D to the maximum mipmap level
+            D = min(D, len(textures["images"]) - 1)
+            ds.append(D)
+
+            D = 2
+
+            img_width, img_height = len(textures["images"][D]), len(textures["images"][D][0])
+            u = int(u00 * img_width) % img_width
+            v = int((1 - v00) * img_height) % img_height
+
+            return textures["images"][D][u][v][:3]
+
 
 
 
@@ -350,6 +385,18 @@ class GL:
                     'w_primes': (w0_prime, w1_prime, w2_prime)
                 }
 
+                uv_matrix = []
+                for y in range(min_y, max_y):
+                    row = []
+                    for x in range(min_x, max_x):
+                        p = Point(x, y, 1, 1)
+                        alpha, beta, gamma, z = triangle.get_weights_and_z(p)
+                        u, v = get_uv(alpha, beta, gamma, uvw_primes)
+                        row.append([u, v])
+                    uv_matrix.append(row)
+
+
+
             for x in range(min_x, max_x):
                 for y in range(min_y, max_y):
                     p = Point(x, y, 1, 1) # TODO: Z value
@@ -361,7 +408,7 @@ class GL:
                             continue
 
                         if textures:
-                            color = get_pixel_texture(alpha, beta, gamma, textures, uvw_primes)
+                            color = get_pixel_texture(x-min_x, y-min_y, uv_matrix)
                         else:
                             color = get_pixel_color(triangle, alpha, beta, gamma, colors, i)
                             if "transparency" in colors:
@@ -382,6 +429,9 @@ class GL:
                             gpu.GPU.DEPTH_COMPONENT32F,
                             [p.z_ndc],
                         )
+        
+        d_df = pd.Series(ds)
+        print(d_df.describe())
 
     @staticmethod
     def triangleSet(point, colors, textures=None):
@@ -654,12 +704,30 @@ class GL:
         textures = None
         # if coord: print(f'Pontos: {coord}, coordIndex: {coordIndex}')
         # if colorPerVertex and color and colorIndex: print(f'Cores: {color}, colorIndex: {colorIndex}')
-        # if texCoord and texCoordIndex: print(f'Texturas: {texCoord}, texCoordIndex: {texCoordIndex}')
+        # if texCoord and texCoordIndex: print(f'Texturas: {texCoord}, texCoordIndex: {texCoordIndex}')]
+
         if current_texture:
-            image = gpu.GPU.load_texture(current_texture[0])
-            # print(f'Matriz com imagem = {image}')
-            # print(f'Dimensões da image = {image.shape}')
-            textures = {"image": image}
+            from PIL import Image  # Import Pillow for saving images
+
+            images = []
+            images.append(gpu.GPU.load_texture(current_texture[0]))  # Load the original texture
+            level = 0
+
+            # Save the original texture (level 0)
+            img = Image.fromarray(np.array(images[0], dtype=np.uint8))
+            img.save(f"mipmap_level_{level}.png")
+            level += 1
+
+            while len(images[-1]) > 1:  # Continue creating mipmap levels
+                new_image = downsample_matrix_with_channels(images[-1], 2)  # Downsample by a factor of 2
+                images.append(new_image)
+
+                # Convert the downsampled image to a format that can be saved
+                img = Image.fromarray(np.array(new_image, dtype=np.uint8))
+                img.save(f"mipmap_level_{level}.png")  # Save the mipmap level
+                level += 1
+
+            textures = {"images": images}
 
 
         # print(f'IndexedFaceSet : colors = {colors}')
@@ -675,7 +743,7 @@ class GL:
                 c0, c1, c2 = color[i], color[i + 1], color[i + 2]
                 all_colors.append((c0, c1, c2))
 
-        if texCoord and texCoordIndex:
+        if texCoord:
             for i in range(0, len(texCoord) - 1, 2):
                 u, v = texCoord[i], texCoord[i + 1]
                 all_uvs.append((u, v))
@@ -699,7 +767,7 @@ class GL:
                 c0, c1, c2 = all_colors[origin_point], all_colors[coordIndex[i]], all_colors[coordIndex[i + 1]]
                 colors["color_per_vertex"] = [c0, c1, c2]
 
-            if texCoord and texCoordIndex:
+            if texCoord:
                 uv0, uv1, uv2 = all_uvs[origin_point], all_uvs[coordIndex[i]], all_uvs[coordIndex[i + 1]]
                 textures["uvs"] = [uv0, uv1, uv2]
 

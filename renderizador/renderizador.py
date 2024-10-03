@@ -29,7 +29,7 @@ ALTURA = 40   # Valor padrão para altura da tela
 class Renderizador:
     """Realiza a renderização da cena informada."""
 
-    def __init__(self, supersampling_factor=4):
+    def __init__(self, supersampling_factor=2):
         """Definindo valores padrão."""
         self.supersampling_factor = supersampling_factor
         self.width = LARGURA
