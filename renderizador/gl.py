@@ -287,10 +287,10 @@ class GL:
             u01, v01 = uv_matrix[y][x + 1]
             u10, v10 = uv_matrix[y + 1][x]
 
-            dudx = u01 - u00  # Change in u along x-axis
-            dudy = u10 - u00  # Change in u along y-axis
-            dvdx = v01 - v00  # Change in v along x-axis
-            dvdy = v10 - v00  # Change in v along y-axis
+            dudx = (u01 - u00) * len(textures["images"][0])  # Change in u along x-axis
+            dudy = (u10 - u00) * len(textures["images"][0]) # Change in u along y-axis
+            dvdx = (v01 - v00) * len(textures["images"][0][0]) # Change in v along x-axis
+            dvdy = (v10 - v00) * len(textures["images"][0][0]) # Change in v along y-axis
 
             L = max(math.sqrt(dudx**2 + dvdx**2), math.sqrt(dudy**2 + dvdy**2))
             if L <= 0:
