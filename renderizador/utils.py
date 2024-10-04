@@ -68,9 +68,9 @@ class Triangle:
         a0 = abs(((x+0.5) * (y1 - y2) + x1 * (y2 - (y+0.5)) + x2 * ((y+0.5) - y1)) / 2)
         a1 = abs(((x+0.5) * (y2 - y0) + x2 * (y0 - (y+0.5)) + x0 * ((y+0.5) - y2)) / 2)
     
-        alpha = min(max(a0 / self.area, 0), 1) if self.area != 0 else 1/3
-        beta = min(max(a1 / self.area, 0), 1) if self.area != 0 else 1/3
-        gamma = 1 - alpha - beta if self.area != 0 else 1/3
+        alpha = min(max(a0 / self.area, 0), 1)
+        beta = min(max(a1 / self.area, 0), 1)
+        gamma = 1 - alpha - beta
 
         return alpha, beta, gamma
     
@@ -163,23 +163,21 @@ class Transform:
                 [0, 0, 0, 1],
             ]
         )
+
         if inverse:
             rotation_matrix = np.transpose(rotation_matrix)
 
         self.transformation_matrix = np.matmul(self.transformation_matrix, rotation_matrix)
 
-    def apply_perspective(self, directions, near, far):
+    def apply_perspective(self, f, z_far, z_near, aspect_ratio):
         """Apply perspective to the transformation matrix."""
-        top, bottom, right, left = directions
 
-        perspective_matrix = np.array(
-            [
-                [near/right, 0, 0, 0],
-                [0, near/top, 0, 0],
-                [0, 0, -(far + near) / (far - near), -2 * far * near / (far - near)],
-                [0, 0, -1, 0],
-            ]
-        )
+        perspective_matrix = np.array([
+            [f / aspect_ratio, 0, 0, 0],
+            [0, f, 0, 0],
+            [0, 0, (z_far + z_near) / (z_near - z_far), (2 * z_far * z_near) / (z_near - z_far)],
+            [0, 0, -1, 0]
+        ])
         self.transformation_matrix = np.matmul(
             self.transformation_matrix, perspective_matrix
         )
@@ -223,3 +221,10 @@ def downsample_matrix_with_channels(input_matrix, factor=2):
     downsampled = np.mean(input_matrix.reshape(rows//factor, factor, cols//factor, factor, channels), axis=(1, 3))
     
     return downsampled
+
+
+def write_array_to_file(array, filename):
+    with open(filename, 'w') as file:
+        for item in array:
+            file.write(f"{item}\n")
+    print(f"Array successfully written to {filename}")
