@@ -25,8 +25,6 @@ import scenegraph   # Imprime o grafo de cena no console
 LARGURA = 60  # Valor padrão para largura da tela
 ALTURA = 40   # Valor padrão para altura da tela
 
-from utils import write_array_to_file
-
 class Renderizador:
     """Realiza a renderização da cena informada."""
 
@@ -151,9 +149,6 @@ class Renderizador:
         # Método para a troca dos buffers (NÃO IMPLEMENTADO)
         # Esse método será utilizado na fase de implementação de animações
         gpu.GPU.swap_buffers()
-        write_array_to_file(gl.GL.all_views, "all_views.txt")
-        write_array_to_file(gl.GL.all_zs, "all_zs.txt")
-        write_array_to_file(gl.GL.all_uvs, "all_uvs.txt")
 
 
 

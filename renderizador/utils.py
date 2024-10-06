@@ -221,10 +221,3 @@ def downsample_matrix_with_channels(input_matrix, factor=2):
     downsampled = np.mean(input_matrix.reshape(rows//factor, factor, cols//factor, factor, channels), axis=(1, 3))
     
     return downsampled
-
-
-def write_array_to_file(array, filename):
-    with open(filename, 'w') as file:
-        for item in array:
-            file.write(f"{item}\n")
-    print(f"Array successfully written to {filename}")

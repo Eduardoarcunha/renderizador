@@ -16,7 +16,7 @@ import gpu  # Simula os recursos de uma GPU
 import math  # Funções matemáticas
 import numpy as np  # Biblioteca do Numpy
 
-from utils import Transform, Point, Triangle, downsample_matrix_with_channels, write_array_to_file
+from utils import Transform, Point, Triangle, downsample_matrix_with_channels
 
 
 class GL:
@@ -30,15 +30,10 @@ class GL:
     two_d_width = 30
     two_d_height = 20
     
-
-
     perspective_matrix = None
     view_matrix = None
     transformation_stack = []
 
-    all_views = []
-    all_zs = []
-    all_uvs = []
 
     @staticmethod
     def setup(width, height, supersampling_factor, near=0.01, far=1000):
@@ -262,9 +257,7 @@ class GL:
 
     @staticmethod
     def triangleSet2D(vertices, colors, textures=None, three_d=False):
-        import pandas as pd
         """Função usada para renderizar TriangleSet2D."""
-        ds = []
         def get_uv(alpha, beta, gamma, triangle):
             uv0, uv1, uv2 = textures["uvs"]
             u0, v0 = uv0[0], uv0[1]
@@ -285,26 +278,24 @@ class GL:
 
         def get_pixel_texture(x, y, uv_matrix):
             u00, v00 = uv_matrix[y][x]
-            GL.all_uvs.append((x,y, u00, v00))
-            img_width, img_height = len(textures["images"][0]), len(textures["images"][0][0])
-            u = int(u00 * img_width) % img_width
-            v = int((1 - v00) * img_height) % img_height
 
             if y + 1 >= len(uv_matrix) or x + 1 >= len(uv_matrix[y]):
+                img_width, img_height = len(textures["images"][0]), len(textures["images"][0][0])
+                u = int(u00 * img_width) % img_width
+                v = int((1 - v00) * img_height) % img_height
                 return textures["images"][0][u][v][:3]
                 
             u01, v01 = uv_matrix[y][x + 1]
             u10, v10 = uv_matrix[y + 1][x]
 
-            dudx = (u01 - u00) #* len(textures["images"][0])  # Change in u along x-axis
-            dudy = (u10 - u00) #* len(textures["images"][0]) # Change in u along y-axis
-            dvdx = (v01 - v00) #* len(textures["images"][0][0]) # Change in v along x-axis
-            dvdy = (v10 - v00) #* len(textures["images"][0][0]) # Change in v along y-axis
+            dudx = (u01 - u00) * textures["images"][0].shape[0]
+            dudy = (u10 - u00) * textures["images"][0].shape[0]
+            dvdx = (v01 - v00) * textures["images"][0].shape[1]
+            dvdy = (v10 - v00) * textures["images"][0].shape[1]
 
             L = max(math.sqrt(dudx**2 + dvdx**2), math.sqrt(dudy**2 + dvdy**2))
             D = max(0, int(math.log2(L)))
             D = min(D, len(textures["images"]) - 1)
-            ds.append(D)
 
             img_width, img_height = len(textures["images"][D]), len(textures["images"][D][0])
             u = int(u00 * img_width) % img_width
@@ -315,7 +306,6 @@ class GL:
 
         def get_pixel_color(triangle, alpha, beta, gamma, colors, i):
             z0, z1, z2 = triangle.p0.z_camera, triangle.p1.z_camera, triangle.p2.z_camera
-            GL.all_zs.append((z0, z1, z2))
 
             A = alpha / z0
             B = beta / z1 if z1 != 0 else beta
@@ -345,14 +335,13 @@ class GL:
         step = 15 if three_d else 6
         for i in range(0, len(vertices), step):
             if three_d:
-                x0, y0, z0_camera, z0_ndc, w0 = vertices[i], vertices[i + 1], vertices[i + 2], vertices[i + 3], vertices[i + 4]
-                x1, y1, z1_camera, z1_ndc, w1 = vertices[i + 5], vertices[i + 6], vertices[i + 7], vertices[i + 8], vertices[i + 9]
-                x2, y2, z2_camera, z2_ndc, w2 = vertices[i + 10], vertices[i + 11], vertices[i + 12], vertices[i + 13], vertices[i + 14]
-                # #print(f'Zs: {z0}, {z1}, {z2}')
+                x0, y0, z0_camera, z0_ndc = vertices[i], vertices[i + 1], vertices[i + 2], vertices[i + 3]
+                x1, y1, z1_camera, z1_ndc = vertices[i + 4], vertices[i + 5], vertices[i + 6], vertices[i + 7]
+                x2, y2, z2_camera, z2_ndc = vertices[i + 8], vertices[i + 9], vertices[i + 10], vertices[i + 11]
             else:
-                x0, y0, z0_camera, z0_ndc, w0 = int(vertices[i]) * GL.supersampling_factor, int(vertices[i + 1]) * GL.supersampling_factor, 1, 1, 1
-                x1, y1, z1_camera, z1_ndc, w1 = int(vertices[i + 2]) * GL.supersampling_factor, int(vertices[i + 3]) * GL.supersampling_factor, 1, 1, 1
-                x2, y2, z2_camera, z2_ndc, w2 = int(vertices[i + 4]) * GL.supersampling_factor, int(vertices[i + 5]) * GL.supersampling_factor, 1, 1, 1
+                x0, y0, z0_camera, z0_ndc = int(vertices[i]) * GL.supersampling_factor, int(vertices[i + 1]) * GL.supersampling_factor, 1, 1
+                x1, y1, z1_camera, z1_ndc = int(vertices[i + 2]) * GL.supersampling_factor, int(vertices[i + 3]) * GL.supersampling_factor, 1, 1
+                x2, y2, z2_camera, z2_ndc = int(vertices[i + 4]) * GL.supersampling_factor, int(vertices[i + 5]) * GL.supersampling_factor, 1, 1
 
             p0, p1, p2 = Point(x0, y0, z0_camera, z0_ndc), Point(x1, y1, z1_camera, z1_ndc), Point(x2, y2, z2_camera, z2_ndc)
             triangle = Triangle(p0, p1, p2)
@@ -360,8 +349,6 @@ class GL:
             min_x, max_x, min_y, max_y = triangle.get_bounds_within_screen(GL.width, GL.height)
 
             if textures:
-                # Get UV coordinates at vertices
-                uv0, uv1, uv2 = textures["uvs"]
                 uv_matrix = []
                 for y in range(min_y, max_y):
                     row = []
@@ -407,8 +394,6 @@ class GL:
                             [p.z_ndc],
                         )
         
-        d_df = pd.Series(ds)
-        print(d_df.describe())
 
     @staticmethod
     def triangleSet(point, colors, textures=None):
@@ -428,14 +413,12 @@ class GL:
                         
             transformed_points = np.matmul(GL.transformation_stack[-1], points_matrix)
             
-            # Apply Viwe
+            # Apply View
             view_points = np.matmul(GL.view_matrix, transformed_points)
-            GL.all_views.append(transformed_points)
             z_camera = view_points[2]
 
             # Apply Perspective
             ndc = np.matmul(GL.perspective_matrix, view_points)
-            w_values = ndc[3]
             ndc = ndc / ndc[3]
             z_ndc = ndc[2]
 
@@ -454,7 +437,6 @@ class GL:
                 points.append(screen_points[1][j])  # y
                 points.append(z_camera[j])          # z (Colors)
                 points.append(z_ndc[j])             # z (Z Buffer)
-                points.append(w_values[j])          # w
 
             GL.triangleSet2D(points, colors, textures, three_d=True)
 
@@ -682,25 +664,12 @@ class GL:
         # if texCoord and texCoordIndex: #print(f'Texturas: {texCoord}, texCoordIndex: {texCoordIndex}')]
 
         if current_texture:
-            from PIL import Image  # Import Pillow for saving images
-
             images = []
             images.append(gpu.GPU.load_texture(current_texture[0]))  # Load the original texture
-            level = 0
-
-            # Save the original texture (level 0)
-            img = Image.fromarray(np.array(images[0], dtype=np.uint8))
-            img.save(f"mipmap_level_{level}.png")
-            level += 1
 
             while len(images[-1]) > 1:  # Continue creating mipmap levels
                 new_image = downsample_matrix_with_channels(images[-1], 2)  # Downsample by a factor of 2
                 images.append(new_image)
-
-                # Convert the downsampled image to a format that can be saved
-                img = Image.fromarray(np.array(new_image, dtype=np.uint8))
-                img.save(f"mipmap_level_{level}.png")  # Save the mipmap level
-                level += 1
 
             textures = {"images": images}
 
