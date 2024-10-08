@@ -66,6 +66,11 @@
           { "path": "3D/animacoes/", "x3d": "onda", "width": 300, "height": 200, "pause": false },
           { "path": "3D/animacoes/", "x3d": "piramide", "width": 300, "height": 200, "pause": false }
         ]
+      },
+      { "title": "OBJ",
+      "examples": [
+        { "path": "3D/", "x3d": "obj", "width": 300, "height": 200, "pause": true }
+      ]
       }
     ]
   }

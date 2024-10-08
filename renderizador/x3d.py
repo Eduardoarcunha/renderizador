@@ -205,6 +205,8 @@ def SFNode(node, name, default):
                 return Cylinder(child)
             if child.tag == "IndexedFaceSet":
                 return IndexedFaceSet(child)
+            if child.tag == "OBJ":
+                return OBJ(child)
         elif name == "X3DMaterialNode":
             if child.tag == "Material":
                 return Material(child)
@@ -1149,3 +1151,25 @@ class ROUTE():
         value = getattr(fromNode, self.fromField)
         toNode = X3DNode.named_nodes[self.toNode]
         setattr(toNode, self.toField, value)
+
+
+from obj import load_obj
+
+class OBJ(X3DGeometryNode):
+    """Classe responsável por carregar e renderizar modelos OBJ."""
+
+    def __init__(self, node):
+        """Parse do nó X3D."""
+        super().__init__(node)
+        self.url = SFString(node, "url", "")
+        self.model = load_obj(self.url)
+
+    def render(self, appearance=None):
+        """Rotina de renderização."""
+        if "OBJ" not in X3D.renderer:
+            raise Exception("OBJ não foi implementado.")
+
+        colors = get_colors(appearance)
+        X3D.renderer["OBJ"](model=self.model, colors=colors)
+
+        

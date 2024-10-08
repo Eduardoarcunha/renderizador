@@ -962,3 +962,13 @@ class GL:
 
     def fragment_shader(self, shader):
         """Para no futuro implementar um fragment shader."""
+
+
+    @staticmethod
+    def obj(model, colors):
+        
+        for face in model.faces:
+            points = []
+            for vertex_index in face:
+                points.extend(model.vertices[vertex_index])
+            GL.triangleSet(points, colors)
