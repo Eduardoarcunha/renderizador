@@ -17,6 +17,7 @@ import math  # Funções matemáticas
 import numpy as np  # Biblioteca do Numpy
 
 from utils import Transform, Point, Triangle, downsample_matrix_with_channels
+from primitives import Cube
 
 
 class GL:
@@ -733,29 +734,22 @@ class GL:
         # encontre os vértices e defina os triângulos.
 
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        #print("Box : size = {0}".format(size)) # imprime no terminal pontos
-        #print("Box : colors = {0}".format(colors)) # imprime no terminal as cores
+        # print("Box : size = {0}".format(size)) # imprime no terminal pontos
+        # print("Box : colors = {0}".format(colors)) # imprime no terminal as cores
 
         # Exemplo de desenho de um pixel branco na coordenada 10, 10
         gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
 
-    @staticmethod
-    def box(size, colors):
-        """Função usada para renderizar Boxes."""
-        # https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html#Box
-        # A função box é usada para desenhar paralelepípedos na cena. O Box é centrada no
-        # (0, 0, 0) no sistema de coordenadas local e alinhado com os eixos de coordenadas
-        # locais. O argumento size especifica as extensões da caixa ao longo dos eixos X, Y
-        # e Z, respectivamente, e cada valor do tamanho deve ser maior que zero. Para desenha
-        # essa caixa você vai provavelmente querer tesselar ela em triângulos, para isso
-        # encontre os vértices e defina os triângulos.
+        cube = Cube(size[0])
 
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        #print("Box : size = {0}".format(size)) # imprime no terminal pontos
-        #print("Box : colors = {0}".format(colors)) # imprime no terminal as cores
+        triangles = cube.get_triangles()
 
-        # Exemplo de desenho de um pixel branco na coordenada 10, 10
-        gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
+        for tri in triangles:
+            p1, p2, p3 = tri
+            points = list(p1) + list(p2) + list(p3)
+
+            GL.triangleSet(points, colors)
+
 
     @staticmethod
     def sphere(radius, colors):
@@ -804,6 +798,7 @@ class GL:
         #print("Cylinder : radius = {0}".format(radius)) # imprime no terminal o raio do cilindro
         #print("Cylinder : height = {0}".format(height)) # imprime no terminal a altura do cilindro
         #print("Cylinder : colors = {0}".format(colors)) # imprime no terminal as cores
+
 
     @staticmethod
     def navigationInfo(headlight):
