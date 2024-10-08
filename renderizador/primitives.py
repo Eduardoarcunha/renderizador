@@ -1,3 +1,5 @@
+import math
+
 class Cube:
     def __init__(self, size):
         self.size = size
@@ -32,4 +34,33 @@ class Cube:
 
         return [t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11]
 
+class Cone:
+
+    def __init__(self, bottom_radius, height, sample=20):
+        self.bottom_radius = bottom_radius
+        self.height = height
+        self.sample = sample
+        self.vertices = self._get_vertices()
+
+    def _get_vertices(self) -> list[tuple]:
+        v0 = (0, self.height/2, 0)
+
+        vertices = [v0]
+
+        theta = 0
+        while theta < 2*math.pi:
+            x, z = self.bottom_radius * math.cos(theta), self.bottom_radius * math.sin(theta)
+            vertices.append((x, -self.height/2, z))
+            theta += 2*math.pi/self.sample
+
+        return vertices
     
+    def get_triangles(self) -> list[list[tuple[float, float, float]]]:
+        triangles = []
+        v0 = self.vertices[0]
+        
+        for i in range(1, len(self.vertices)-1):
+            v1, v2 = self.vertices[i], self.vertices[i+1]
+            triangles.append([v0, v2, v1])
+
+        return triangles
