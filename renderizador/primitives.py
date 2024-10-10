@@ -63,4 +63,65 @@ class Cone:
             v1, v2 = self.vertices[i], self.vertices[i+1]
             triangles.append([v0, v2, v1])
 
+        self.vertices.append(self.vertices[0])
+        self.vertices.append(self.vertices[1])
+        
+        center = (0, -self.height/2, 0)
+        for i in range(0, len(self.vertices)-1):
+            v1, v2 = self.vertices[i], self.vertices[i+1]
+            if i % 2 == 0:
+                v1, v2 = v2, v1
+
+            triangles.append([center, v1, v2])
+            
+        return triangles
+
+
+class Cilinder:
+    def __init__(self, radius, height, sample=20):
+        self.radius = radius
+        self.height = height
+        self.sample = sample
+        self.vertices = self._get_vertices()
+
+    def _get_vertices(self) -> list[tuple]:
+        vertices = []
+        
+        theta = 0
+        while theta < 2*math.pi:
+            x, z = self.radius * math.cos(theta), self.radius * math.sin(theta)
+            vertices.append((x, self.height/2, z))
+            vertices.append((x, -self.height/2, z))
+            theta += 2*math.pi/self.sample
+
+        return vertices
+
+    def get_triangles(self) -> list[list[tuple[float, float, float]]]:
+        triangles = []
+        # Cilinder Walls
+        for i in range(len(self.vertices)-2):
+            v0, v1, v2 = self.vertices[i], self.vertices[i+1], self.vertices[i+2]
+
+            if i % 2 == 0:
+                v1, v2 = v2, v1
+            triangles.append([v0, v1, v2])
+
+        upper_center = (0, self.height / 2, 0)
+        lower_center = (0, -self.height / 2, 0)
+
+        self.vertices.append(self.vertices[0])
+        self.vertices.append(self.vertices[1])
+        
+        for i in range(0, len(self.vertices)-3, 2):
+            upper_v1, upper_v2 = self.vertices[i], self.vertices[i+2]
+            lower_v1, lower_v2 = self.vertices[i+1], self.vertices[i+3]
+
+            if i % 2 == 0:
+                upper_v1, upper_v2 = upper_v2, upper_v1
+                lower_v1, lower_v2 = lower_v2, lower_v1
+
+            triangles.append([upper_center, upper_v1, upper_v2])
+            triangles.append([lower_center, lower_v1, lower_v2])
+
+
         return triangles

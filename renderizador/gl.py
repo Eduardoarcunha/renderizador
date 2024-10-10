@@ -17,7 +17,7 @@ import math  # Funções matemáticas
 import numpy as np  # Biblioteca do Numpy
 
 from utils import Transform, Point, Triangle, downsample_matrix_with_channels
-from primitives import Cube, Cone
+from primitives import Cube, Cone, Cilinder
 
 
 class GL:
@@ -779,14 +779,13 @@ class GL:
         # encontre os vértices e defina os triângulos.
 
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        print("Cone : bottomRadius = {0}".format(bottomRadius)) # imprime no terminal o raio da base do cone
-        print("Cone : height = {0}".format(height)) # imprime no terminal a altura do cone
-        print("Cone : colors = {0}".format(colors)) # imprime no terminal as cores
+        # print("Cone : bottomRadius = {0}".format(bottomRadius)) # imprime no terminal o raio da base do cone
+        # print("Cone : height = {0}".format(height)) # imprime no terminal a altura do cone
+        # print("Cone : colors = {0}".format(colors)) # imprime no terminal as cores
 
         cone = Cone(bottomRadius, height)
 
         triangles = cone.get_triangles()
-        print(triangles)
 
         for tri in triangles:
             p1, p2, p3 = tri
@@ -806,10 +805,21 @@ class GL:
         # encontre os vértices e defina os triângulos.
 
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        #print("Cylinder : radius = {0}".format(radius)) # imprime no terminal o raio do cilindro
-        #print("Cylinder : height = {0}".format(height)) # imprime no terminal a altura do cilindro
-        #print("Cylinder : colors = {0}".format(colors)) # imprime no terminal as cores
+        print("Cylinder : radius = {0}".format(radius)) # imprime no terminal o raio do cilindro
+        print("Cylinder : height = {0}".format(height)) # imprime no terminal a altura do cilindro
+        print("Cylinder : colors = {0}".format(colors)) # imprime no terminal as cores
 
+        
+        cilinder = Cilinder(radius, height)
+
+        triangles = cilinder.get_triangles()
+        # print(triangles)
+
+        for tri in triangles:
+            p1, p2, p3 = tri
+            points = list(p1) + list(p2) + list(p3)
+
+            GL.triangleSet(points, colors)
 
     @staticmethod
     def navigationInfo(headlight):
