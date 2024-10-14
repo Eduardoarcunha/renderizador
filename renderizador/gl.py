@@ -17,7 +17,7 @@ import math  # Funções matemáticas
 import numpy as np  # Biblioteca do Numpy
 
 from utils import Transform, Point, Triangle, downsample_matrix_with_channels
-from primitives import Cube, Cone, Cilinder
+from primitives import Cube, Cone, Cilinder, Sphere
 
 
 class GL:
@@ -766,6 +766,18 @@ class GL:
             # "Sphere : radius = {0}".format(radius)
         # )  # imprime no terminal o raio da esfera
         #print("Sphere : colors = {0}".format(colors))  # imprime no terminal as cores
+
+
+        sphere = Sphere(radius)
+
+        triangles = sphere.get_triangles()
+
+        for tri in triangles:
+            p1, p2, p3 = tri
+            points = list(p1) + list(p2) + list(p3)
+
+            GL.triangleSet(points, colors)
+
 
     @staticmethod
     def cone(bottomRadius, height, colors):

@@ -36,7 +36,7 @@ class Cube:
 
 class Cone:
 
-    def __init__(self, bottom_radius, height, sample=20):
+    def __init__(self, bottom_radius, height, sample=40):
         self.bottom_radius = bottom_radius
         self.height = height
         self.sample = sample
@@ -78,7 +78,7 @@ class Cone:
 
 
 class Cilinder:
-    def __init__(self, radius, height, sample=20):
+    def __init__(self, radius, height, sample=40):
         self.radius = radius
         self.height = height
         self.sample = sample
@@ -123,5 +123,73 @@ class Cilinder:
             triangles.append([upper_center, upper_v1, upper_v2])
             triangles.append([lower_center, lower_v1, lower_v2])
 
+
+        return triangles
+
+class Sphere:
+    def __init__(self, radius, sample = 40):
+        self.radius = radius
+        self.sample = sample
+        self.vertices = self._get_vertices()
+
+    def _get_vertices(self) -> list[list[tuple]]:
+        vertices = []
+        bottom_vertex, top_vertex = (0, -self.radius, 0), (0, self.radius, 0) 
+        vertices.append([top_vertex])
+
+
+        theta = 0 
+        phi = math.pi / self.sample
+
+        while phi < math.pi:
+            theta = 0
+            temp = []
+            y = self.radius * math.cos(phi)
+            while theta < 2 * math.pi:
+                x = self.radius * math.sin(phi) * math.cos(theta)
+                z = self.radius * math.sin(phi) * math.sin(theta)
+                temp.append((x,y,z))
+                theta += 2*math.pi/self.sample
+
+            temp.append(temp[0])
+            temp.append(temp[1])
+            vertices.append(temp)
+            phi += math.pi/self.sample
+
+        vertices.append([bottom_vertex])
+            
+        return vertices
+    
+
+    def get_triangles(self) -> list[list[tuple[float, float, float]]]:
+        triangles = []
+
+        # Bottom Level
+        v0 = self.vertices[0][0]
+        for i in range(len(self.vertices[1]) - 1):
+            v1, v2 = self.vertices[1][i], self.vertices[1][i+1]
+            triangles.append([v0, v1, v2])
+
+
+        # Top Level
+        v0 = self.vertices[-1][0]
+        for i in range(len(self.vertices[-2]) - 1):
+            v1, v2 = self.vertices[-2][i], self.vertices[-2][i+1]
+            triangles.append([v0, v2, v1])
+
+
+        # Middle Levels
+        for i in range(1, len(self.vertices) - 2):
+            upper_level = self.vertices[i]
+            lower_level = self.vertices[i + 1]
+
+            for j in range(len(upper_level) - 1):
+                upper_left = upper_level[j]
+                upper_right = upper_level[j + 1]
+                lower_left = lower_level[j]
+                lower_right = lower_level[j + 1]
+
+                triangles.append([upper_left, lower_left, lower_right])
+                triangles.append([upper_left, lower_right, upper_right])
 
         return triangles
