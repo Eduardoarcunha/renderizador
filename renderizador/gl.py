@@ -264,7 +264,7 @@ class GL:
                 )
 
     @staticmethod
-    def triangleSet2D(vertices, colors, textures=None, three_d=False):
+    def triangleSet2D(vertices, colors, textures=None, three_d=False, normal=None):
         """Função usada para renderizar TriangleSet2D."""
 
         def get_uv(alpha, beta, gamma, triangle):
@@ -443,11 +443,31 @@ class GL:
                                         c
                                     ] * (1 - transparency)
 
+                        if GL.directional_light:
+                            i_rgb = get_light()
+                            color = color[0] * i_rgb
+
+                        normal_map_color = [
+                            (normal[0] + 1) * 127.5,
+                            (normal[1] + 1) * 127.5,
+                            (normal[2] + 1) * 127.5,
+                        ]
+
                         gpu.GPU.draw_pixel(
                             [int(x), int(y)],
                             gpu.GPU.RGB8,
-                            [color[0], color[1], color[2]],
+                            [
+                                normal_map_color[0],
+                                normal_map_color[1],
+                                normal_map_color[2],
+                            ],
                         )
+
+                        # gpu.GPU.draw_pixel(
+                        #     [int(x), int(y)],
+                        #     gpu.GPU.RGB8,
+                        #     [color[0], color[1], color[2]],
+                        # )
 
                         gpu.GPU.draw_pixel(
                             [int(x), int(y)],
@@ -485,6 +505,13 @@ class GL:
             transform.apply_mirror("y")
             transform_matrix = transform.get_transformation_matrix()
 
+            # Calcula normal
+            p0 = Point(view_points[0][0], view_points[1][0], None, view_points[2][0])
+            p1 = Point(view_points[0][1], view_points[1][1], None, view_points[2][1])
+            p2 = Point(view_points[0][2], view_points[1][2], None, view_points[2][2])
+            triangle = Triangle(p0, p1, p2)
+            normal = triangle.get_normal()
+
             screen_points = np.matmul(transform_matrix, ndc)
             screen_points = screen_points / screen_points[3]
 
@@ -495,7 +522,7 @@ class GL:
                 points.append(z_camera[j])  # z (Colors)
                 points.append(z_ndc[j])  # z (Z Buffer)
 
-            GL.triangleSet2D(points, colors, textures, three_d=True)
+            GL.triangleSet2D(points, colors, textures, three_d=True, normal=normal)
 
     @staticmethod
     def viewpoint(position, orientation, fieldOfView):
@@ -953,16 +980,18 @@ class GL:
         # longo de raios paralelos de uma distância infinita.
 
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        # print("DirectionalLight : ambientIntensity = {0}".format(ambientIntensity))
-        # print("DirectionalLight : color = {0}".format(color))  # imprime no terminal
-        # print(
-        #     "DirectionalLight : intensity = {0}".format(intensity)
-        # )  # imprime no terminal
-        # #print(
-        #     "DirectionalLight : direction = {0}".format(direction)
-        # )  # imprime no terminal
+        print("DirectionalLight : ambientIntensity = {0}".format(ambientIntensity))
+        print("DirectionalLight : color = {0}".format(color))  # imprime no terminal
+        print(
+            "DirectionalLight : intensity = {0}".format(intensity)
+        )  # imprime no terminal
+        print(
+            "DirectionalLight : direction = {0}".format(direction)
+        )  # imprime no terminal
 
-        
+        GL.directional_light = DirectionalLight(
+            ambientIntensity, color, intensity, direction
+        )
 
     @staticmethod
     def pointLight(ambientIntensity, color, intensity, location):

@@ -14,7 +14,7 @@
       </Shape>
     </Transform> -->
 
-    <Transform translation="0 -5 -10" scale="60 60 60">
+    <Transform translation="0 -5 -10" scale="60 60 60" >
       <Shape>
         <OBJ url="models/bunny.obj"/>
         <Appearance>

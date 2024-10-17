@@ -104,6 +104,24 @@ class Triangle:
         z = self.get_z(alpha, beta, gamma)
         return alpha, beta, gamma, z
 
+    def get_normal(self):
+        v0 = (
+            self.p1.x - self.p0.x,
+            self.p1.y - self.p0.y,
+            self.p1.z_ndc - self.p0.z_ndc,
+        )
+        v1 = (
+            self.p2.x - self.p0.x,
+            self.p2.y - self.p0.y,
+            self.p2.z_ndc - self.p0.z_ndc,
+        )
+
+        n = np.cross(v0, v1)
+        magnitude = np.linalg.norm(n)
+        if magnitude != 0:
+            n = n / magnitude
+        return n
+
 
 class Transform:
     """Class to handle 3D transformations."""
@@ -249,7 +267,13 @@ def downsample_matrix_with_channels(input_matrix, factor=2):
 
 
 class DirectionalLight:
-    def __init__(self, ambient_intensity, color, intensity, direction):
+    def __init__(
+        self,
+        ambient_intensity: float,
+        color: list[float],
+        intensity: float,
+        direction: list[int],
+    ):
         self.ambient_intensity = ambient_intensity
         self.color = color
         self.intensity = intensity
