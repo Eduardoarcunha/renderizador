@@ -1,5 +1,6 @@
 import math
 
+
 class Cube:
     def __init__(self, size):
         self.size = size
@@ -34,6 +35,7 @@ class Cube:
 
         return [t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11]
 
+
 class Cone:
 
     def __init__(self, bottom_radius, height, sample=40):
@@ -43,37 +45,39 @@ class Cone:
         self.vertices = self._get_vertices()
 
     def _get_vertices(self) -> list[tuple]:
-        v0 = (0, self.height/2, 0)
+        v0 = (0, self.height / 2, 0)
 
         vertices = [v0]
 
         theta = 0
-        while theta < 2*math.pi:
-            x, z = self.bottom_radius * math.cos(theta), self.bottom_radius * math.sin(theta)
-            vertices.append((x, -self.height/2, z))
-            theta += 2*math.pi/self.sample
+        while theta < 2 * math.pi:
+            x, z = self.bottom_radius * math.cos(theta), self.bottom_radius * math.sin(
+                theta
+            )
+            vertices.append((x, -self.height / 2, z))
+            theta += 2 * math.pi / self.sample
 
         return vertices
-    
+
     def get_triangles(self) -> list[list[tuple[float, float, float]]]:
         triangles = []
         v0 = self.vertices[0]
-        
-        for i in range(1, len(self.vertices)-1):
-            v1, v2 = self.vertices[i], self.vertices[i+1]
+
+        for i in range(1, len(self.vertices) - 1):
+            v1, v2 = self.vertices[i], self.vertices[i + 1]
             triangles.append([v0, v2, v1])
 
         self.vertices.append(self.vertices[0])
         self.vertices.append(self.vertices[1])
-        
-        center = (0, -self.height/2, 0)
-        for i in range(0, len(self.vertices)-1):
-            v1, v2 = self.vertices[i], self.vertices[i+1]
+
+        center = (0, -self.height / 2, 0)
+        for i in range(0, len(self.vertices) - 1):
+            v1, v2 = self.vertices[i], self.vertices[i + 1]
             if i % 2 == 0:
                 v1, v2 = v2, v1
 
             triangles.append([center, v1, v2])
-            
+
         return triangles
 
 
@@ -86,21 +90,21 @@ class Cilinder:
 
     def _get_vertices(self) -> list[tuple]:
         vertices = []
-        
+
         theta = 0
-        while theta < 2*math.pi:
+        while theta < 2 * math.pi:
             x, z = self.radius * math.cos(theta), self.radius * math.sin(theta)
-            vertices.append((x, self.height/2, z))
-            vertices.append((x, -self.height/2, z))
-            theta += 2*math.pi/self.sample
+            vertices.append((x, self.height / 2, z))
+            vertices.append((x, -self.height / 2, z))
+            theta += 2 * math.pi / self.sample
 
         return vertices
 
     def get_triangles(self) -> list[list[tuple[float, float, float]]]:
         triangles = []
         # Cilinder Walls
-        for i in range(len(self.vertices)-2):
-            v0, v1, v2 = self.vertices[i], self.vertices[i+1], self.vertices[i+2]
+        for i in range(len(self.vertices) - 2):
+            v0, v1, v2 = self.vertices[i], self.vertices[i + 1], self.vertices[i + 2]
 
             if i % 2 == 0:
                 v1, v2 = v2, v1
@@ -111,10 +115,10 @@ class Cilinder:
 
         self.vertices.append(self.vertices[0])
         self.vertices.append(self.vertices[1])
-        
-        for i in range(0, len(self.vertices)-3, 2):
-            upper_v1, upper_v2 = self.vertices[i], self.vertices[i+2]
-            lower_v1, lower_v2 = self.vertices[i+1], self.vertices[i+3]
+
+        for i in range(0, len(self.vertices) - 3, 2):
+            upper_v1, upper_v2 = self.vertices[i], self.vertices[i + 2]
+            lower_v1, lower_v2 = self.vertices[i + 1], self.vertices[i + 3]
 
             if i % 2 == 0:
                 upper_v1, upper_v2 = upper_v2, upper_v1
@@ -123,22 +127,21 @@ class Cilinder:
             triangles.append([upper_center, upper_v1, upper_v2])
             triangles.append([lower_center, lower_v1, lower_v2])
 
-
         return triangles
 
+
 class Sphere:
-    def __init__(self, radius, sample = 40):
+    def __init__(self, radius, sample=40):
         self.radius = radius
         self.sample = sample
         self.vertices = self._get_vertices()
 
     def _get_vertices(self) -> list[list[tuple]]:
         vertices = []
-        bottom_vertex, top_vertex = (0, -self.radius, 0), (0, self.radius, 0) 
+        bottom_vertex, top_vertex = (0, -self.radius, 0), (0, self.radius, 0)
         vertices.append([top_vertex])
 
-
-        theta = 0 
+        theta = 0
         phi = math.pi / self.sample
 
         while phi < math.pi:
@@ -148,18 +151,17 @@ class Sphere:
             while theta < 2 * math.pi:
                 x = self.radius * math.sin(phi) * math.cos(theta)
                 z = self.radius * math.sin(phi) * math.sin(theta)
-                temp.append((x,y,z))
-                theta += 2*math.pi/self.sample
+                temp.append((x, y, z))
+                theta += 2 * math.pi / self.sample
 
             temp.append(temp[0])
             temp.append(temp[1])
             vertices.append(temp)
-            phi += math.pi/self.sample
+            phi += math.pi / self.sample
 
         vertices.append([bottom_vertex])
-            
+
         return vertices
-    
 
     def get_triangles(self) -> list[list[tuple[float, float, float]]]:
         triangles = []
@@ -167,16 +169,14 @@ class Sphere:
         # Bottom Level
         v0 = self.vertices[0][0]
         for i in range(len(self.vertices[1]) - 1):
-            v1, v2 = self.vertices[1][i], self.vertices[1][i+1]
+            v1, v2 = self.vertices[1][i], self.vertices[1][i + 1]
             triangles.append([v0, v1, v2])
-
 
         # Top Level
         v0 = self.vertices[-1][0]
         for i in range(len(self.vertices[-2]) - 1):
-            v1, v2 = self.vertices[-2][i], self.vertices[-2][i+1]
+            v1, v2 = self.vertices[-2][i], self.vertices[-2][i + 1]
             triangles.append([v0, v2, v1])
-
 
         # Middle Levels
         for i in range(1, len(self.vertices) - 2):

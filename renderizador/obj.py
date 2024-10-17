@@ -5,20 +5,21 @@ class OBJModel:
     def parse_obj(self, file_path):
         vertices = []
         faces = []
-        
-        with open(file_path, 'r') as file:
+
+        with open(file_path, "r") as file:
             for line in file:
-                if line.startswith('v '):  # Vertex
+                if line.startswith("v "):  # Vertex
                     vertex = list(map(float, line.split()[1:4]))
                     vertices.append(vertex)
-                elif line.startswith('f '):  # Face
+                elif line.startswith("f "):  # Face
                     face = []
                     for v in line.split()[1:]:
-                        w = v.split('/')
+                        w = v.split("/")
                         face.append(int(w[0]) - 1)
                     faces.append(face)
-        
+
         return vertices, faces
+
 
 def load_obj(file_path):
     return OBJModel(file_path)

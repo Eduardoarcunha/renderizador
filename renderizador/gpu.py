@@ -9,13 +9,14 @@ Disciplina: Computação Gráfica
 Data: 31 de Agosto de 2020
 """
 
-import os           # Para rotinas do sistema operacional
+import os  # Para rotinas do sistema operacional
 
 # Numpy
 import numpy as np
 
 # Pillow
 from PIL import Image
+
 
 class FrameBuffer:
     """Organiza objetos FrameBuffer (FrameBuffer Objects)."""
@@ -39,8 +40,12 @@ class GPU:
     DEPTH_COMPONENT16 = 0b101  # Valores para Profundidade de 16bits cada (0-65535)
     DEPTH_COMPONENT32F = 0b110  # Valores para Profundidade de 32bits em float
 
-    COLOR_ATTACHMENT = 0  # Para FrameBuffer Object identificar memória de imagem de cores
-    DEPTH_ATTACHMENT = 1  # Para FrameBuffer Object identificar memória de imagem de profundidade
+    COLOR_ATTACHMENT = (
+        0  # Para FrameBuffer Object identificar memória de imagem de cores
+    )
+    DEPTH_ATTACHMENT = (
+        1  # Para FrameBuffer Object identificar memória de imagem de profundidade
+    )
 
     # Atributos estáticos
     image_file = None
@@ -72,7 +77,9 @@ class GPU:
         for _ in range(size):
             fbo = FrameBuffer()
             GPU.frame_buffer.append(fbo)
-            allocated += [len(GPU.frame_buffer)-1]  # informado a posição recem alocada
+            allocated += [
+                len(GPU.frame_buffer) - 1
+            ]  # informado a posição recem alocada
         return allocated
 
     @staticmethod
@@ -97,7 +104,9 @@ class GPU:
                 dtype = np.uint8
                 depth = 4
             # Aloca espaço definindo todos os valores como 0 (imagem preta)
-            GPU.frame_buffer[position].color = np.zeros((height, width, depth), dtype=dtype)
+            GPU.frame_buffer[position].color = np.zeros(
+                (height, width, depth), dtype=dtype
+            )
         elif attachment == GPU.DEPTH_ATTACHMENT:
             if mode == GPU.DEPTH_COMPONENT16:
                 dtype = np.uint16
@@ -106,7 +115,9 @@ class GPU:
                 dtype = np.float32
                 depth = 1
             # Aloca espaço definindo todos os valores como 1 (profundidade máxima)
-            GPU.frame_buffer[position].depth = np.ones((height, width, depth), dtype=dtype)
+            GPU.frame_buffer[position].depth = np.ones(
+                (height, width, depth), dtype=dtype
+            )
 
     @staticmethod
     def clear_color(color):
@@ -139,19 +150,39 @@ class GPU:
                     fb_dim = GPU.frame_buffer[GPU.draw_framebuffer].color.shape
 
                     # Verifica se escrita é em um local válido
-                    if coord[0] < 0 or coord[0] >= fb_dim[1] or coord[1] < 0 or coord[1] >= fb_dim[0]:
-                        raise Exception(f"Acesso irregular de escrita na posição [{coord[0]}, {coord[1]}] do Framebuffer {fb_dim[1], fb_dim[0]}")
+                    if (
+                        coord[0] < 0
+                        or coord[0] >= fb_dim[1]
+                        or coord[1] < 0
+                        or coord[1] >= fb_dim[0]
+                    ):
+                        raise Exception(
+                            f"Acesso irregular de escrita na posição [{coord[0]}, {coord[1]}] do Framebuffer {fb_dim[1], fb_dim[0]}"
+                        )
 
                     # Verifica se os dados estão no tamanho certo e em uma faixa suportada
-                    if isinstance(data, (list, tuple, np.ndarray)) and (len(data) == (mode+2)) and all( 0 <= i <= 255 for i in data):
+                    if (
+                        isinstance(data, (list, tuple, np.ndarray))
+                        and (len(data) == (mode + 2))
+                        and all(0 <= i <= 255 for i in data)
+                    ):
                         # Grava dados no Framebuffer
-                        GPU.frame_buffer[GPU.draw_framebuffer].color[coord[1]][coord[0]] = data
+                        GPU.frame_buffer[GPU.draw_framebuffer].color[coord[1]][
+                            coord[0]
+                        ] = data
                     else:
-                        raise Exception(f"Valores do Frame buffer devem estar em um vetor de dimensão [{mode+2}] ser inteiros e estar entre 0 e 255")
+                        raise Exception(
+                            f"Valores do Frame buffer devem estar em um vetor de dimensão [{mode+2}] ser inteiros e estar entre 0 e 255"
+                        )
                 else:
-                    raise Exception(f"Frame buffer {GPU.draw_framebuffer} não alocado com o canal de cor")
+                    raise Exception(
+                        f"Frame buffer {GPU.draw_framebuffer} não alocado com o canal de cor"
+                    )
 
-            elif mode in (GPU.DEPTH_COMPONENT16, GPU.DEPTH_COMPONENT32F):  # profundidade
+            elif mode in (
+                GPU.DEPTH_COMPONENT16,
+                GPU.DEPTH_COMPONENT32F,
+            ):  # profundidade
 
                 #  Verifica se o Framebuffer do canal de profundidade foi alocado
                 if GPU.frame_buffer[GPU.draw_framebuffer].depth.size != 0:
@@ -160,22 +191,38 @@ class GPU:
                     fb_dim = GPU.frame_buffer[GPU.draw_framebuffer].depth.shape
 
                     # Verifica se escrita é em um local válido
-                    if coord[0] < 0 or coord[0] >= fb_dim[1] or coord[1] < 0 or coord[1] >= fb_dim[0]:
-                        raise Exception(f"Acesso irregular de escrita na posição [{coord[0]}, {coord[1]}] do Framebuffer {fb_dim[1], fb_dim[0]}")
+                    if (
+                        coord[0] < 0
+                        or coord[0] >= fb_dim[1]
+                        or coord[1] < 0
+                        or coord[1] >= fb_dim[0]
+                    ):
+                        raise Exception(
+                            f"Acesso irregular de escrita na posição [{coord[0]}, {coord[1]}] do Framebuffer {fb_dim[1], fb_dim[0]}"
+                        )
 
                     # Verifica se os dados estão no tamanho certo e em um formato suportado
-                    if isinstance(data, (list, tuple, np.ndarray)) and (len(data)==1) and isinstance(data[0], (int, float)):
+                    if (
+                        isinstance(data, (list, tuple, np.ndarray))
+                        and (len(data) == 1)
+                        and isinstance(data[0], (int, float))
+                    ):
                         # Grava dados no Framebuffer
-                        GPU.frame_buffer[GPU.draw_framebuffer].depth[coord[1]][coord[0]] = data
+                        GPU.frame_buffer[GPU.draw_framebuffer].depth[coord[1]][
+                            coord[0]
+                        ] = data
                     else:
-                        raise Exception(f"Valores do Frame buffer devem ser um vetor com um único valor numérico: {data}")
-                    
+                        raise Exception(
+                            f"Valores do Frame buffer devem ser um vetor com um único valor numérico: {data}"
+                        )
+
                 else:
-                    raise Exception(f"Frame buffer {GPU.draw_framebuffer} não alocado com o canal de profundidade")
+                    raise Exception(
+                        f"Frame buffer {GPU.draw_framebuffer} não alocado com o canal de profundidade"
+                    )
 
             else:
                 raise Exception(f"Modo inválido de leitura do Frame buffer ({mode})")
-
 
     @staticmethod
     def read_pixel(coord, mode):
@@ -185,20 +232,34 @@ class GPU:
 
                 #  Verifica se o Framebuffer do canal de cor foi alocado
                 if GPU.frame_buffer[GPU.draw_framebuffer].color.size != 0:
-                    
+
                     # Coleta a dimensão do Framebuffer para o canal de cor
                     fb_dim = GPU.frame_buffer[GPU.read_framebuffer].color.shape
 
                     # Verifica se leitura é em um local válido
-                    if coord[0] < 0 or coord[0] >= fb_dim[1] or coord[1] < 0 or coord[1] >= fb_dim[0]:
-                        raise Exception(f"Acesso irregular de leitura na posição [{coord[0]}, {coord[1]}] do Framebuffer {fb_dim[1], fb_dim[0]}")
+                    if (
+                        coord[0] < 0
+                        or coord[0] >= fb_dim[1]
+                        or coord[1] < 0
+                        or coord[1] >= fb_dim[0]
+                    ):
+                        raise Exception(
+                            f"Acesso irregular de leitura na posição [{coord[0]}, {coord[1]}] do Framebuffer {fb_dim[1], fb_dim[0]}"
+                        )
 
-                    data = GPU.frame_buffer[GPU.read_framebuffer].color[coord[1]][coord[0]]
+                    data = GPU.frame_buffer[GPU.read_framebuffer].color[coord[1]][
+                        coord[0]
+                    ]
 
                 else:
-                    raise Exception(f"Frame buffer {GPU.draw_framebuffer} não alocado com o canal de cor")
+                    raise Exception(
+                        f"Frame buffer {GPU.draw_framebuffer} não alocado com o canal de cor"
+                    )
 
-            elif mode in (GPU.DEPTH_COMPONENT16, GPU.DEPTH_COMPONENT32F):  # profundidade
+            elif mode in (
+                GPU.DEPTH_COMPONENT16,
+                GPU.DEPTH_COMPONENT32F,
+            ):  # profundidade
 
                 #  Verifica se o Framebuffer do canal de profundidade foi alocado
                 if GPU.frame_buffer[GPU.draw_framebuffer].depth.size != 0:
@@ -206,14 +267,25 @@ class GPU:
                     # Coleta a dimensão do Framebuffer para o canal de profundidade
                     fb_dim = GPU.frame_buffer[GPU.read_framebuffer].depth.shape
 
-                    # Verifica se leitura é em um local válido                    
-                    if coord[0] < 0 or coord[0] >= fb_dim[1] or coord[1] < 0 or coord[1] >= fb_dim[0]:
-                        raise Exception(f"Acesso irregular de leitura na posição [{coord[0]}, {coord[1]}] do Framebuffer {fb_dim[1], fb_dim[0]}")
+                    # Verifica se leitura é em um local válido
+                    if (
+                        coord[0] < 0
+                        or coord[0] >= fb_dim[1]
+                        or coord[1] < 0
+                        or coord[1] >= fb_dim[0]
+                    ):
+                        raise Exception(
+                            f"Acesso irregular de leitura na posição [{coord[0]}, {coord[1]}] do Framebuffer {fb_dim[1], fb_dim[0]}"
+                        )
 
-                    data = GPU.frame_buffer[GPU.read_framebuffer].depth[coord[1]][coord[0]]
+                    data = GPU.frame_buffer[GPU.read_framebuffer].depth[coord[1]][
+                        coord[0]
+                    ]
 
                 else:
-                    raise Exception(f"Frame buffer {GPU.draw_framebuffer} não alocado com o canal de profundidade")
+                    raise Exception(
+                        f"Frame buffer {GPU.draw_framebuffer} não alocado com o canal de profundidade"
+                    )
 
             else:
                 raise Exception(f"Modo inválido de leitura do Frame buffer ({mode})")
@@ -225,14 +297,14 @@ class GPU:
     def save_image():
         """Método para salvar a imagem do framebuffer em um arquivo."""
         if GPU.frame_buffer[GPU.read_framebuffer].color.shape[2] == 3:
-            img = Image.fromarray(GPU.frame_buffer[GPU.read_framebuffer].color, 'RGB')
+            img = Image.fromarray(GPU.frame_buffer[GPU.read_framebuffer].color, "RGB")
         else:
-            img = Image.fromarray(GPU.frame_buffer[GPU.read_framebuffer].color, 'RGBA')
+            img = Image.fromarray(GPU.frame_buffer[GPU.read_framebuffer].color, "RGBA")
         counter = 0
-        filename = GPU.image_file.split('.')
-        while os.path.exists(filename[0]+str(counter).zfill(3)+'.'+filename[1]):
+        filename = GPU.image_file.split(".")
+        while os.path.exists(filename[0] + str(counter).zfill(3) + "." + filename[1]):
             counter += 1
-        img.save(filename[0]+str(counter).zfill(3)+'.'+filename[1])
+        img.save(filename[0] + str(counter).zfill(3) + "." + filename[1])
 
     @staticmethod
     def load_texture(textura):
