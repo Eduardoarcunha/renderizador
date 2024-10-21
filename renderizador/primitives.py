@@ -38,7 +38,7 @@ class Cube:
 
 class Cone:
 
-    def __init__(self, bottom_radius, height, sample=40):
+    def __init__(self, bottom_radius, height, sample=100):
         self.bottom_radius = bottom_radius
         self.height = height
         self.sample = sample
@@ -82,7 +82,7 @@ class Cone:
 
 
 class Cilinder:
-    def __init__(self, radius, height, sample=40):
+    def __init__(self, radius, height, sample=100):
         self.radius = radius
         self.height = height
         self.sample = sample
@@ -131,7 +131,7 @@ class Cilinder:
 
 
 class Sphere:
-    def __init__(self, radius, sample=40):
+    def __init__(self, radius, sample=100):
         self.radius = radius
         self.sample = sample
         self.vertices = self._get_vertices()

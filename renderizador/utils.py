@@ -266,6 +266,15 @@ def downsample_matrix_with_channels(input_matrix, factor=2):
     return downsampled
 
 
+def normalize_vector(v):
+    magnitude = np.linalg.norm(v)
+    if magnitude != 0:
+        v = v / magnitude
+    return v
+
+def vector_module(v):
+    return math.sqrt(sum([x**2 for x in v]))
+
 class DirectionalLight:
     def __init__(
         self,

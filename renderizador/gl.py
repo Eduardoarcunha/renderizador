@@ -20,8 +20,9 @@ from utils import (
     Transform,
     Point,
     Triangle,
-    downsample_matrix_with_channels,
     DirectionalLight,
+    downsample_matrix_with_channels,
+    vector_module,
 )
 from primitives import Cube, Cone, Cilinder, Sphere
 
@@ -351,6 +352,33 @@ class GL:
                 max(min(int(color[2] * 255), 255), 0),
             ]
 
+        def apply_light(oergb):
+            # print(colors)
+            odrgb = colors["diffuseColor"] if "diffuseColor" in colors else [0, 0, 0]
+            oa = colors["ambientIntensity"] if "ambientIntensity" in colors else 0
+            osrgb = colors["specularColor"] if "specularColor" in colors else [0, 0, 0]
+            shiness = colors["shininess"] if "shininess" in colors else 0
+
+            ilrgb = GL.directional_light.color
+            ii = GL.directional_light.intensity
+            iia = GL.directional_light.ambient_intensity
+
+            L = -np.array(GL.directional_light.direction)
+            v = normal
+
+            lv = (L + v) / vector_module(L + v)
+
+            ambient_i = iia * np.array(odrgb) * np.array(oa)
+            diffuse_i = ii * np.array(odrgb) * np.dot(normal, L)
+            specular_i = ii * np.array(osrgb) * (np.dot(normal, lv)) ** (shiness * 128)
+            irgb = oergb + (ambient_i + diffuse_i + specular_i)
+
+            return [
+                max(min(int(irgb[0] * 255), 255), 0),
+                max(min(int(irgb[1] * 255), 255), 0),
+                max(min(int(irgb[2] * 255), 255), 0),
+            ]
+
         step = 15 if three_d else 6
         for i in range(0, len(vertices), step):
             if three_d:
@@ -444,30 +472,29 @@ class GL:
                                     ] * (1 - transparency)
 
                         if GL.directional_light:
-                            i_rgb = get_light()
-                            color = color[0] * i_rgb
+                            color = apply_light(color)
 
-                        normal_map_color = [
-                            (normal[0] + 1) * 127.5,
-                            (normal[1] + 1) * 127.5,
-                            (normal[2] + 1) * 127.5,
-                        ]
-
-                        gpu.GPU.draw_pixel(
-                            [int(x), int(y)],
-                            gpu.GPU.RGB8,
-                            [
-                                normal_map_color[0],
-                                normal_map_color[1],
-                                normal_map_color[2],
-                            ],
-                        )
+                        # normal_map_color = [
+                        #     (normal[0] + 1) * 127.5,
+                        #     (normal[1] + 1) * 127.5,
+                        #     (normal[2] + 1) * 127.5,
+                        # ]
 
                         # gpu.GPU.draw_pixel(
                         #     [int(x), int(y)],
                         #     gpu.GPU.RGB8,
-                        #     [color[0], color[1], color[2]],
+                        #     [
+                        #         normal_map_color[0],
+                        #         normal_map_color[1],
+                        #         normal_map_color[2],
+                        #     ],
                         # )
+
+                        gpu.GPU.draw_pixel(
+                            [int(x), int(y)],
+                            gpu.GPU.RGB8,
+                            [color[0], color[1], color[2]],
+                        )
 
                         gpu.GPU.draw_pixel(
                             [int(x), int(y)],
@@ -965,9 +992,12 @@ class GL:
         # ambientIntensity = 0,0 e direção = (0 0 −1).
 
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        # print(
-        #     "NavigationInfo : headlight = {0}".format(headlight)
-        # )  # imprime no terminal
+        print(
+            "NavigationInfo : headlight = {0}".format(headlight)
+        )  # imprime no terminal
+
+        if headlight:
+            GL.directionalLight(0.0, (1, 1, 1), 1, (0, 0, -1))
 
     @staticmethod
     def directionalLight(ambientIntensity, color, intensity, direction):

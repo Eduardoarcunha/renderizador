@@ -34,6 +34,7 @@ def get_colors(appearance):
         "specularColor": [0.0, 0.0, 0.0],  # Valor padrão
         "shininess": 0.2,  # Valor padrão
         "transparency": 0.0,  # Valor padrão
+        "ambientIntensity": 0.0,
     }
     if appearance and appearance.material:
         colors["diffuseColor"] = appearance.material.diffuseColor
@@ -41,6 +42,7 @@ def get_colors(appearance):
         colors["specularColor"] = appearance.material.specularColor
         colors["shininess"] = appearance.material.shininess
         colors["transparency"] = appearance.material.transparency
+        colors["ambientIntensity"] = appearance.material.ambientIntensity
 
     return colors
 
