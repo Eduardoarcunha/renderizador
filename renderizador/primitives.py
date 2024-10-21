@@ -189,7 +189,7 @@ class Sphere:
                 lower_left = lower_level[j]
                 lower_right = lower_level[j + 1]
 
-                triangles.append([upper_left, lower_left, lower_right])
-                triangles.append([upper_left, lower_right, upper_right])
+                triangles.append([upper_left, lower_right, lower_left])
+                triangles.append([upper_left, upper_right, lower_right])
 
         return triangles
