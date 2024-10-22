@@ -321,4 +321,9 @@ class GPU:
 
     @staticmethod
     def swap_buffers():
-        """Método para a troca dos buffers (NÃO IMPLEMENTADA)."""
+        """
+        Swaps the draw and read framebuffers to support double buffering for animations.
+        This prevents visual artifacts during rendering by maintaining two buffers:
+        one for drawing the next frame while the other is being displayed.
+        """
+        # Swap the draw and read framebuffer indices

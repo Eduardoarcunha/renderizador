@@ -45,32 +45,26 @@ class Renderizador:
         # Configurando color buffers para exibição na tela
 
         # Cria uma (1) posição de FrameBuffer na GPU
-        fbo = gpu.GPU.gen_framebuffers(2)
+        fbo = gpu.GPU.gen_framebuffers(3)
         print(f"Framebuffers: {fbo}")
 
         # Define o atributo FRONT como o FrameBuffe principal
         self.framebuffers["FRONT"] = fbo[0]
-        self.framebuffers["SUPERSAMPLING"] = fbo[1]
+        self.framebuffers["BACK"] = fbo[1]
+        self.framebuffers["SUPERSAMPLING"] = fbo[2]
 
-        # Define que a posição criada será usada para desenho e leitura
         gpu.GPU.bind_framebuffer(
             gpu.GPU.FRAMEBUFFER, self.framebuffers["SUPERSAMPLING"]
         )
-        # Opções:
-        # - DRAW_FRAMEBUFFER: Faz o bind só para escrever no framebuffer
-        # - READ_FRAMEBUFFER: Faz o bind só para leitura no framebuffer
-        # - FRAMEBUFFER: Faz o bind para leitura e escrita no framebuffer
 
-        # Aloca memória no FrameBuffer para um tipo e tamanho especificado de buffer
-
-        # Memória de Framebuffer para canal de cores
-        gpu.GPU.framebuffer_storage(
-            self.framebuffers["FRONT"],
-            gpu.GPU.COLOR_ATTACHMENT,
-            gpu.GPU.RGB8,
-            self.width,
-            self.height,
-        )
+        for buffer in ["FRONT", "BACK"]:
+            gpu.GPU.framebuffer_storage(
+                self.framebuffers[buffer],
+                gpu.GPU.COLOR_ATTACHMENT,
+                gpu.GPU.RGB8,
+                self.width,
+                self.height,
+            )
 
         gpu.GPU.framebuffer_storage(
             self.framebuffers["SUPERSAMPLING"],
@@ -80,7 +74,6 @@ class Renderizador:
             self.height * self.supersampling_factor,
         )
 
-        # Descomente as seguintes linhas se for usar um Framebuffer para profundidade
         gpu.GPU.framebuffer_storage(
             self.framebuffers["SUPERSAMPLING"],
             gpu.GPU.DEPTH_ATTACHMENT,
@@ -89,22 +82,14 @@ class Renderizador:
             self.height * self.supersampling_factor,
         )
 
-        # Opções:
-        # - COLOR_ATTACHMENT: alocações para as cores da imagem renderizada
-        # - DEPTH_ATTACHMENT: alocações para as profundidades da imagem renderizada
-        # Obs: Você pode chamar duas vezes a rotina com cada tipo de buffer.
-
-        # Tipos de dados:
-        # - RGB8: Para canais de cores (Vermelho, Verde, Azul) 8bits cada (0-255)
-        # - RGBA8: Para canais de cores (Vermelho, Verde, Azul, Transparência) 8bits cada (0-255)
-        # - DEPTH_COMPONENT16: Para canal de Profundidade de 16bits (half-precision) (0-65535)
-        # - DEPTH_COMPONENT32F: Para canal de Profundidade de 32bits (single-precision) (float)
+        # Initially bind to the supersampling buffer
+        gpu.GPU.bind_framebuffer(
+            gpu.GPU.FRAMEBUFFER, self.framebuffers["SUPERSAMPLING"]
+        )
 
         # Define cor que ira apagar o FrameBuffer quando clear_buffer() invocado
         gpu.GPU.clear_color([0, 0, 0])
 
-        # Define a profundidade que ira apagar o FrameBuffer quando clear_buffer() invocado
-        # Assuma 1.0 o mais afastado e -1.0 o mais próximo da camera
         gpu.GPU.clear_depth(1.0)
 
         # Definindo tamanho do Viewport para renderização
@@ -123,34 +108,22 @@ class Renderizador:
         # Retorna o valor do pixel no framebuffer: read_pixel(coord, mode)
 
     def pos(self):
-        print("Pós renderização")
-
         """Rotinas pós renderização."""
-        # Função invocada após o processo de renderização terminar.
+        # Get the supersampled buffer
+        supersampled_framebuffer = gpu.GPU.get_frame_buffer()
 
-        supersampled_framebuffer = gpu.GPU.get_frame_buffer()  # Get no super sample
-        # with open("supersampled_framebuffer.txt", "w") as file:
-        #     for y in range(self.height * self.supersampling_factor):
-        #         for x in range(self.width * self.supersampling_factor):
-        #             file.write(f'{supersampled_framebuffer[y][x]}\n')
-
-        gpu.GPU.bind_framebuffer(gpu.GPU.FRAMEBUFFER, self.framebuffers["FRONT"])
-        gpu.GPU.clear_buffer()
+        # Switch to the back buffer for downsampling
+        gpu.GPU.bind_framebuffer(gpu.GPU.FRAMEBUFFER, self.framebuffers["BACK"])
+        # gpu.GPU.clear_buffer()
         self.downsample(supersampled_framebuffer)
 
-        normal_framebuffer = gpu.GPU.get_frame_buffer()
-        # with open("normal_framebuffer.txt", "w") as file:
-        #     for y in range(self.height):
-        #         for x in range(self.width):
-        #             file.write(f'{normal_framebuffer[y][x]}\n')
-
-        # Essa é uma chamada conveniente para manipulação de buffers
-        # ao final da renderização de um frame. Como por exemplo, executar
-        # downscaling da imagem.
-
-        # Método para a troca dos buffers (NÃO IMPLEMENTADO)
-        # Esse método será utilizado na fase de implementação de animações
+        # Swap the buffers to display the new frame
         gpu.GPU.swap_buffers()
+
+        # Prepare supersampling buffer for next frame
+        gpu.GPU.bind_framebuffer(
+            gpu.GPU.FRAMEBUFFER, self.framebuffers["SUPERSAMPLING"]
+        )
 
     def downsample(self, supersampled_framebuffer):
         """Realiza o downsample do framebuffer."""

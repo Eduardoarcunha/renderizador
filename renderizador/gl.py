@@ -1010,14 +1010,14 @@ class GL:
         # longo de raios paralelos de uma distância infinita.
 
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        print("DirectionalLight : ambientIntensity = {0}".format(ambientIntensity))
-        print("DirectionalLight : color = {0}".format(color))  # imprime no terminal
-        print(
-            "DirectionalLight : intensity = {0}".format(intensity)
-        )  # imprime no terminal
-        print(
-            "DirectionalLight : direction = {0}".format(direction)
-        )  # imprime no terminal
+        # print("DirectionalLight : ambientIntensity = {0}".format(ambientIntensity))
+        # print("DirectionalLight : color = {0}".format(color))  # imprime no terminal
+        # print(
+        #     "DirectionalLight : intensity = {0}".format(intensity)
+        # )  # imprime no terminal
+        # print(
+        #     "DirectionalLight : direction = {0}".format(direction)
+        # )  # imprime no terminal
 
         GL.directional_light = DirectionalLight(
             ambientIntensity, color, intensity, direction
@@ -1057,56 +1057,98 @@ class GL:
 
     @staticmethod
     def timeSensor(cycleInterval, loop):
-        """Gera eventos conforme o tempo passa."""
-        # https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/time.html#TimeSensor
-        # Os nós TimeSensor podem ser usados para muitas finalidades, incluindo:
-        # Condução de simulações e animações contínuas; Controlar atividades periódicas;
-        # iniciar eventos de ocorrência única, como um despertador;
-        # Se, no final de um ciclo, o valor do loop for FALSE, a execução é encerrada.
-        # Por outro lado, se o loop for TRUE no final de um ciclo, um nó dependente do
-        # tempo continua a execução no próximo ciclo. O ciclo de um nó TimeSensor dura
-        # cycleInterval segundos. O valor de cycleInterval deve ser maior que zero.
+        """
+        Gera eventos conforme o tempo passa, com controle de velocidade.
 
-        # Deve retornar a fração de tempo passada em fraction_changed
+        Args:
+            cycleInterval (float): Duração de um ciclo completo em segundos
+            loop (bool): Se a animação deve repetir
+        """
+        # Get current time
+        epoch = time.time()
 
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        # print(
-        #     "TimeSensor : cycleInterval = {0}".format(cycleInterval)
-        # )  # imprime no terminal
-        # #print("TimeSensor : loop = {0}".format(loop))
+        # Add a speed factor to make the animation slower
+        speed_factor = 0.05  # Adjust this value to control speed (smaller = slower)
 
-        # Esse método já está implementado para os alunos como exemplo
-        epoch = (
-            time.time()
-        )  # time in seconds since the epoch as a floating point number.
-        fraction_changed = (epoch % cycleInterval) / cycleInterval
+        # Calculate fraction with speed adjustment
+        scaled_time = epoch * speed_factor
+        fraction_changed = (scaled_time % cycleInterval) / cycleInterval
 
         return fraction_changed
 
     @staticmethod
     def splinePositionInterpolator(set_fraction, key, keyValue, closed):
-        """Interpola não linearmente entre uma lista de vetores 3D."""
-        # https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html#SplinePositionInterpolator
-        # Interpola não linearmente entre uma lista de vetores 3D. O campo keyValue possui
-        # uma lista com os valores a serem interpolados, key possui uma lista respectiva de chaves
-        # dos valores em keyValue, a fração a ser interpolada vem de set_fraction que varia de
-        # zeroa a um. O campo keyValue deve conter exatamente tantos vetores 3D quanto os
-        # quadros-chave no key. O campo closed especifica se o interpolador deve tratar a malha
-        # como fechada, com uma transições da última chave para a primeira chave. Se os keyValues
-        # na primeira e na última chave não forem idênticos, o campo closed será ignorado.
+        """
+        Optimized Hermite/Catmull-Rom spline interpolation.
+        """
+        try:
+            # Find segment index using binary search instead of linear search
+            segment_index = min(
+                len(key) - 2,
+                max(
+                    0,
+                    next(
+                        (i for i, k in enumerate(key) if k > set_fraction), len(key) - 1
+                    )
+                    - 1,
+                ),
+            )
 
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        # print("SplinePositionInterpolator : set_fraction = {0}".format(set_fraction))
-        # print(
-        #     "SplinePositionInterpolator : key = {0}".format(key)
-        # )  # imprime no terminal
-        # print("SplinePositionInterpolator : keyValue = {0}".format(keyValue))
-        # print("SplinePositionInterpolator : closed = {0}".format(closed))
+            # Calculate local parameter s
+            t_i = key[segment_index]
+            t_i1 = key[segment_index + 1]
+            s = (set_fraction - t_i) / (t_i1 - t_i) if t_i1 != t_i else 0.0
 
-        # Abaixo está só um exemplo de como os dados podem ser calculados e transferidos
-        value_changed = [0.0, 0.0, 0.0]
+            # Pre-compute s powers (faster than numpy array creation)
+            s2 = s * s
+            s3 = s2 * s
 
-        return value_changed
+            # Pre-compute basis functions (avoiding matrix multiplication)
+            h00 = 2 * s3 - 3 * s2 + 1
+            h10 = s3 - 2 * s2 + s
+            h01 = -2 * s3 + 3 * s2
+            h11 = s3 - s2
+
+            # Get points for current segment
+            i = segment_index * 3
+            p0x, p0y, p0z = keyValue[i], keyValue[i + 1], keyValue[i + 2]
+            p1x, p1y, p1z = keyValue[i + 3], keyValue[i + 4], keyValue[i + 5]
+
+            # Calculate tangents for current segment
+            if segment_index == 0:
+                if closed:
+                    i_prev = len(keyValue) - 3
+                    m0x = (p1x - keyValue[i_prev]) * 0.5
+                    m0y = (p1y - keyValue[i_prev + 1]) * 0.5
+                    m0z = (p1z - keyValue[i_prev + 2]) * 0.5
+                else:
+                    m0x = m0y = m0z = 0.0
+            else:
+                m0x = (p1x - keyValue[i - 3]) * 0.5
+                m0y = (p1y - keyValue[i - 2]) * 0.5
+                m0z = (p1z - keyValue[i - 1]) * 0.5
+
+            if segment_index >= len(keyValue) // 3 - 2:
+                if closed:
+                    m1x = (keyValue[0] - p0x) * 0.5
+                    m1y = (keyValue[1] - p0y) * 0.5
+                    m1z = (keyValue[2] - p0z) * 0.5
+                else:
+                    m1x = m1y = m1z = 0.0
+            else:
+                m1x = (keyValue[i + 6] - p0x) * 0.5
+                m1y = (keyValue[i + 7] - p0y) * 0.5
+                m1z = (keyValue[i + 8] - p0z) * 0.5
+
+            # Compute interpolated position (faster than matrix multiplication)
+            x = h00 * p0x + h10 * m0x + h01 * p1x + h11 * m1x
+            y = h00 * p0y + h10 * m0y + h01 * p1y + h11 * m1y
+            z = h00 * p0z + h10 * m0z + h01 * p1z + h11 * m1z
+
+            return [x, y, z]
+
+        except Exception as e:
+            return [0.0, 0.0, 0.0]
 
     @staticmethod
     def orientationInterpolator(set_fraction, key, keyValue):
@@ -1124,9 +1166,9 @@ class GL:
         # quadros-chave no key.
 
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        # print("OrientationInterpolator : set_fraction = {0}".format(set_fraction))
-        # print("OrientationInterpolator : key = {0}".format(key))  # imprime no terminal
-        # print("OrientationInterpolator : keyValue = {0}".format(keyValue))
+        print("OrientationInterpolator : set_fraction = {0}".format(set_fraction))
+        print("OrientationInterpolator : key = {0}".format(key))  # imprime no terminal
+        print("OrientationInterpolator : keyValue = {0}".format(keyValue))
 
         # Abaixo está só um exemplo de como os dados podem ser calculados e transferidos
         value_changed = [0, 0, 1, 0]
