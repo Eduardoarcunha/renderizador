@@ -9,7 +9,7 @@ Disciplina: Computação Gráfica
 Data: 31 de Agosto de 2020
 """
 
-import time         # Para operações com tempo, como a duração de renderização
+import time  # Para operações com tempo, como a duração de renderização
 import numpy as np  # Para operações matemáticas
 
 # Matplotlib
@@ -23,24 +23,24 @@ import matplotlib.patheffects as path_effects
 class Interface:
     """Interface para usuário/desenvolvedor verificar resultados da renderização."""
 
-    pontos = []        # pontos a serem desenhados
-    linhas = []        # linhas a serem desenhadas
-    circulos = []      # circulos a serem desenhados
-    poligonos = []     # poligonos a serem desenhados
+    pontos = []  # pontos a serem desenhados
+    linhas = []  # linhas a serem desenhadas
+    circulos = []  # circulos a serem desenhados
+    poligonos = []  # poligonos a serem desenhados
 
-    last_time = 0      # para calculo de FPS
+    last_time = 0  # para calculo de FPS
 
     def __init__(self, width, height, filename):
         """Inicializa Interface Gráfica."""
         self.width = width
         self.height = height
 
-        self.geometrias = []    # lista de geometrias para controlar exibição
-        self.grid = False       # usado para controlar se grid exibido ou não
+        self.geometrias = []  # lista de geometrias para controlar exibição
+        self.grid = False  # usado para controlar se grid exibido ou não
 
-        self.image_saver = None # recebe função para salvar imagens
+        self.image_saver = None  # recebe função para salvar imagens
 
-        self.fig, self.axes = plt.subplots(num="Renderizador - "+filename)
+        self.fig, self.axes = plt.subplots(num="Renderizador - " + filename)
         self.fig.tight_layout(rect=(0, 0.05, 1, 0.98))
 
         self.axes.axis([0, width, height, 0])  # [xmin, xmax, ymin, ymax]
@@ -59,15 +59,20 @@ class Interface:
 
         self.axes.xaxis.set_major_locator(MultipleLocator(divisions))
         self.axes.yaxis.set_major_locator(MultipleLocator(divisions))
-        self.axes.xaxis.set_minor_locator(MultipleLocator(divisions//10))
-        self.axes.yaxis.set_minor_locator(MultipleLocator(divisions//10))
+        self.axes.xaxis.set_minor_locator(MultipleLocator(divisions // 10))
+        self.axes.yaxis.set_minor_locator(MultipleLocator(divisions // 10))
 
     def annotation(self, points):
         """Desenha texto ao lado dos pontos identificando eles."""
-        dist_label = 5 # distância do label para o ponto
+        dist_label = 5  # distância do label para o ponto
         for i, pos in enumerate(points):
-            text = self.axes.annotate("P{0}".format(i), xy=pos, xytext=(dist_label, dist_label),
-                                      textcoords='offset points', color='lightgray')
+            text = self.axes.annotate(
+                "P{0}".format(i),
+                xy=pos,
+                xytext=(dist_label, dist_label),
+                textcoords="offset points",
+                color="lightgray",
+            )
             self.geometrias.append(text)
 
     def draw_points(self, point, text=False):
@@ -80,7 +85,9 @@ class Interface:
         y_values = [pt[1] for pt in points]
 
         # desenha as linhas com os pontos
-        dots, = self.axes.plot(x_values, y_values, marker='o', color=color, linestyle="")  # "ro"
+        (dots,) = self.axes.plot(
+            x_values, y_values, marker="o", color=color, linestyle=""
+        )  # "ro"
         self.geometrias.append(dots)
 
         # desenha texto se requisitado
@@ -97,7 +104,9 @@ class Interface:
         y_values = [pt[1] for pt in points]
 
         # desenha as linhas com os pontos
-        line, = self.axes.plot(x_values, y_values, marker='o', color=color, linestyle="-")
+        (line,) = self.axes.plot(
+            x_values, y_values, marker="o", color=color, linestyle="-"
+        )
         self.geometrias.append(line)
 
         # desenha texto se requisitado
@@ -112,13 +121,17 @@ class Interface:
         # desenha o contorno de um círculo
         x_values = [radius * np.sin(np.radians(i)) for i in range(0, 360, 2)]
         y_values = [radius * np.cos(np.radians(i)) for i in range(0, 360, 2)]
-        circle, = self.axes.plot(x_values, y_values, marker='', color=color, linestyle="-")
-        circle.set_path_effects([path_effects.withStroke(linewidth=3, foreground='black')])
+        (circle,) = self.axes.plot(
+            x_values, y_values, marker="", color=color, linestyle="-"
+        )
+        circle.set_path_effects(
+            [path_effects.withStroke(linewidth=3, foreground="black")]
+        )
         self.geometrias.append(circle)
 
         # desenha texto se requisitado
         if text:
-            self.annotation([[0,0]]) # Centro sempre no (0,0)
+            self.annotation([[0, 0]])  # Centro sempre no (0,0)
 
     def draw_triangle(self, triangles, text=False):
         """Exibe triângulos na tela da interface gráfica."""
@@ -131,10 +144,12 @@ class Interface:
             y_values = [pt[1] for pt in points] + [points[0][1]]
 
             # desenha as linhas com os pontos  op:"ro-"
-            line, = self.axes.plot(x_values, y_values, marker='o', color=color, linestyle="-")
+            (line,) = self.axes.plot(
+                x_values, y_values, marker="o", color=color, linestyle="-"
+            )
             self.geometrias.append(line)
 
-            poly, = self.axes.fill(x_values, y_values, color=color+[0.4])
+            (poly,) = self.axes.fill(x_values, y_values, color=color + [0.4])
             self.geometrias.append(poly)
 
             # desenha texto se requisitado
@@ -143,14 +158,14 @@ class Interface:
 
     def exibe_geometrias_grid(self, label):
         """Exibe e esconde as geometrias/grid sobre a tela da interface gráfica."""
-        if label == 'Geometria':
+        if label == "Geometria":
             for geometria in self.geometrias:
                 geometria.set_visible(not geometria.get_visible())
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
-        elif label == 'Grid':
+        elif label == "Grid":
             self.grid = not self.grid
-            self.axes.grid(self.grid, which='both')
+            self.axes.grid(self.grid, which="both")
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
 
@@ -176,7 +191,7 @@ class Interface:
         # Calcula o tempo ao concluir a renderização
         elapsed_time = time.process_time() - start
 
-        image = self.axes.imshow(data, interpolation='nearest', extent=extent)
+        image = self.axes.imshow(data, interpolation="nearest", extent=extent)
 
         for pontos in Interface.pontos:
             self.draw_points(pontos, text=True)
@@ -195,10 +210,12 @@ class Interface:
             geometria.set_visible(False)
 
         # Configura todos os botões da interface
-        bgeogrid = CheckButtons(plt.axes([0.78, 0.02, 0.18, 0.10]), ['Grid', 'Geometria'])
+        bgeogrid = CheckButtons(
+            plt.axes([0.78, 0.02, 0.18, 0.10]), ["Grid", "Geometria"]
+        )
         bgeogrid.on_clicked(self.exibe_geometrias_grid)
 
-        bsave = Button(plt.axes([0.4, 0.02, 0.15, 0.06]), 'Salvar')
+        bsave = Button(plt.axes([0.4, 0.02, 0.15, 0.06]), "Salvar")
         bsave.on_clicked(self.save_image)
 
         # Animação de quadros
@@ -211,7 +228,7 @@ class Interface:
             image.set_array(data)
 
             # Calcula e atualiza a quantidade de Quadros Por Segundo
-            fps = "{:.1f}".format(1/(time.process_time() - Interface.last_time))
+            fps = "{:.1f}".format(1 / (time.process_time() - Interface.last_time))
             time_box.set_val(fps)
             time_box.cursor_index = len(fps)
             Interface.last_time = time.process_time()
@@ -224,9 +241,11 @@ class Interface:
         # Configura texto da interface
         time_box_pos = plt.axes([0.18, 0.02, 0.15, 0.06])
         if pause:
-            time_box = TextBox(time_box_pos, 'Tempo (s) ', initial="{:.4f}".format(elapsed_time))
+            time_box = TextBox(
+                time_box_pos, "Tempo (s) ", initial="{:.4f}".format(elapsed_time)
+            )
         else:
-            time_box = TextBox(time_box_pos, 'FPS ', initial="0.0")
+            time_box = TextBox(time_box_pos, "FPS ", initial="0.0")
             _ = animation.FuncAnimation(self.fig, animate, interval=1, blit=False)
 
         plt.show()

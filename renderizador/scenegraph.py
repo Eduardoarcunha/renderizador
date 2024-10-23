@@ -1,4 +1,5 @@
-#from treelib import Node, Tree
+# from treelib import Node, Tree
+
 
 # Desenha o Grafo de Cena no console
 class Graph:

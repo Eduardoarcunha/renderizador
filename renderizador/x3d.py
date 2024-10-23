@@ -20,18 +20,21 @@ import math
 
 # Métodos de Apoio
 
+
 def clean(child):
     """Recebe um nó XML e remove dele o namespace do atributo tag se houver."""
-    _, _, child.tag = child.tag.rpartition('}') # remove os namespaces
+    _, _, child.tag = child.tag.rpartition("}")  # remove os namespaces
+
 
 def get_colors(appearance):
     """Método de apoio para recuperar cores de um nó Appearance."""
     colors = {
-        "diffuseColor": [0.8, 0.8, 0.8],  # Valor padrão
+        "diffuseColor": [0.0, 0.0, 0.0],  # Valor padrão
         "emissiveColor": [0.0, 0.0, 0.0],  # Valor padrão
         "specularColor": [0.0, 0.0, 0.0],  # Valor padrão
         "shininess": 0.2,  # Valor padrão
-        "transparency": 0.0  # Valor padrão
+        "transparency": 0.0,  # Valor padrão
+        "ambientIntensity": 0.0,
     }
     if appearance and appearance.material:
         colors["diffuseColor"] = appearance.material.diffuseColor
@@ -39,11 +42,13 @@ def get_colors(appearance):
         colors["specularColor"] = appearance.material.specularColor
         colors["shininess"] = appearance.material.shininess
         colors["transparency"] = appearance.material.transparency
+        colors["ambientIntensity"] = appearance.material.ambientIntensity
 
     return colors
 
 
 # Leitores de Campos X3D
+
 
 def SFTime(node, field, default):
     """Especifica um único valor de tempo."""
@@ -51,31 +56,35 @@ def SFTime(node, field, default):
         return float(node.attrib[field].strip())
     return default
 
+
 def SFFloat(node, field, default):
     """Especifica um único valor em ponto flutuante."""
     if node is not None and field in node.attrib:
         return float(node.attrib[field].strip())
     return default
 
+
 def MFFloat(node, field, default):
     """Especifica uma cor."""
     if node is not None and field in node.attrib:
         val = node.attrib[field].strip()
         if val:
-            val_str = re.split(r'[,\s]\s*', val)
+            val_str = re.split(r"[,\s]\s*", val)
             return [float(value) for value in val_str]
         return []
     return default
+
 
 def MFInt32(node, field, default):
     """Especifica zero ou mais valores inteiros."""
     if node is not None and field in node.attrib:
         val = node.attrib[field].strip()
         if val:
-            val_str = re.split(r'[,\s]\s*', val)
+            val_str = re.split(r"[,\s]\s*", val)
             return [int(value) for value in val_str]
         return []
     return default
+
 
 def SFBool(node, field, default):
     """Especifica um único valor booleano."""
@@ -84,65 +93,72 @@ def SFBool(node, field, default):
         return val_str == "true"
     return default
 
+
 def SFRotation(node, field, default):
     """Especifica uma rotação única."""
     if node is not None and field in node.attrib:
         val = node.attrib[field].strip()
         if val:
-            val_str = re.split(r'[,\s]\s*', val)
+            val_str = re.split(r"[,\s]\s*", val)
             return [float(value) for value in val_str]
         return []
     return default
+
 
 def SFColor(node, field, default):
     """Especifica uma cor."""
     if node is not None and field in node.attrib:
         val = node.attrib[field].strip()
         if val:
-            val_str = re.split(r'[,\s]\s*', val)
+            val_str = re.split(r"[,\s]\s*", val)
             return [float(value) for value in val_str]
         return []
     return default
+
 
 def MFColor(node, field, default):
     """Especifica uma cor."""
     if node is not None and field in node.attrib:
         val = node.attrib[field].strip()
         if val:
-            val_str = re.split(r'[,\s]\s*', val)
+            val_str = re.split(r"[,\s]\s*", val)
             return [float(value) for value in val_str]
         return []
     return default
+
 
 def SFVec3f(node, field, default):
     """Especifica um vetor tridimensional (3D)."""
     if node is not None and field in node.attrib:
         val = node.attrib[field].strip()
         if val:
-            val_str = re.split(r'[,\s]\s*', val)
+            val_str = re.split(r"[,\s]\s*", val)
             return [float(value) for value in val_str]
         return []
     return default
+
 
 def MFVec3f(node, field, default):
     """Especifica zero ou mais vetores tridimensionais (3D)."""
     if node is not None and field in node.attrib:
         val = node.attrib[field].strip()
         if val:
-            val_str = re.split(r'[,\s]\s*', val)
+            val_str = re.split(r"[,\s]\s*", val)
             return [float(value) for value in val_str]
         return []
     return default
+
 
 def MFVec2f(node, field, default):
     """Especifica zero ou mais vetores bidimensionais (2D)."""
     if node is not None and field in node.attrib:
         val = node.attrib[field].strip()
         if val:
-            val_str = re.split(r'[,\s]\s*', val)
+            val_str = re.split(r"[,\s]\s*", val)
             return [float(value) for value in val_str]
         return []
     return default
+
 
 def SFString(node, field, default):
     """Especifica uma strings."""
@@ -150,19 +166,23 @@ def SFString(node, field, default):
         return node.attrib[field].strip()
     return default
 
+
 def MFString(node, field, default):
     """Especifica zero ou mais strings."""
     if node is not None and field in node.attrib:
-        val_str = re.split(r'[,\s]\s*', node.attrib[field].strip())
-        return [addr.replace('"', '').replace("'", '') for addr in val_str if addr != '']
+        val_str = re.split(r"[,\s]\s*", node.attrib[field].strip())
+        return [
+            addr.replace('"', "").replace("'", "") for addr in val_str if addr != ""
+        ]
     return default
+
 
 def MFNode(node, name, default):
     """Especifica zero ou mais nós X3D."""
     children = default
 
     for child in node:
-        clean(child) # remove namespace
+        clean(child)  # remove namespace
         if name == "X3DChildNode":
             if child.tag == "Shape":
                 children.append(Shape(child))
@@ -171,10 +191,11 @@ def MFNode(node, name, default):
 
     return children
 
+
 def SFNode(node, name, default):
     """Especifica um nó X3D."""
     for child in node:
-        clean(child) # remove namespace
+        clean(child)  # remove namespace
         if name == "X3DAppearanceNode":
             if child.tag == "Appearance":
                 appearance = Appearance(child)
@@ -199,8 +220,14 @@ def SFNode(node, name, default):
                 return Box(child)
             if child.tag == "Sphere":
                 return Sphere(child)
+            if child.tag == "Cone":
+                return Cone(child)
+            if child.tag == "Cylinder":
+                return Cylinder(child)
             if child.tag == "IndexedFaceSet":
                 return IndexedFaceSet(child)
+            if child.tag == "OBJ":
+                return OBJ(child)
         elif name == "X3DMaterialNode":
             if child.tag == "Material":
                 return Material(child)
@@ -221,6 +248,7 @@ def SFNode(node, name, default):
 
 
 # Estrutura do X3D
+
 
 class X3D:
     """
@@ -279,13 +307,14 @@ class X3D:
     def parse(self):
         """Leitura da cena começando da raiz do X3D."""
         for child in self.root:
-            clean(child) # remove namespace
+            clean(child)  # remove namespace
             if child.tag == "Scene":
                 self.scene = Scene(child)
 
     def render(self):
         """Renderização da cena começando da raiz do X3D."""
         self.scene.render()
+
 
 class Scene:
     """O nó Scene acomoda a cena X3D."""
@@ -341,7 +370,9 @@ class Scene:
         for child in self.children:
             child.render()
 
+
 # Core component
+
 
 class X3DNode:
     """Nó abstrato que é o tipo base para todos os nós no sistema X3D."""
@@ -353,6 +384,7 @@ class X3DNode:
         if node is not None and "DEF" in node.attrib:
             self.name = node.attrib["DEF"].strip()
             X3DNode.named_nodes[self.name] = self
+
 
 class X3DChildNode(X3DNode):
     """Nó abstrato como base para campos children, addChildren, and removeChildren."""
@@ -380,6 +412,7 @@ class X3DSensorNode(X3DChildNode):
 
 # Time component
 
+
 class X3DTimeDependentNode(X3DChildNode):
     """Nó abstrato que todos os tipos que dependem de tempo derivam."""
 
@@ -404,11 +437,13 @@ class TimeSensor(X3DTimeDependentNode, X3DSensorNode):
             raise Exception("TimeSensor não foi implementado.")
 
         # NO FUTURO MANDAR O OBJETO INTEIRO COM SEUS PARAMETROS ENCAPSULADOS
-        self.fraction_changed = X3D.renderer["TimeSensor"](cycleInterval=self.cycleInterval,
-                                                           loop=self.loop)
+        self.fraction_changed = X3D.renderer["TimeSensor"](
+            cycleInterval=self.cycleInterval, loop=self.loop
+        )
 
 
 # Grouping component
+
 
 class X3DGroupingNode(X3DChildNode):
     """Nó abstrato indica que os tipos de nós concretos derivados dele contêm nós filhos."""
@@ -428,7 +463,7 @@ class Transform(X3DGroupingNode):
 
     def __init__(self, node):
         """Parse do nó X3d."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.rotation = SFRotation(node, "rotation", [0, 0, 1, 0])
         self.scale = SFVec3f(node, "scale", [1, 1, 1])
         self.translation = SFVec3f(node, "translation", [0, 0, 0])
@@ -441,9 +476,9 @@ class Transform(X3DGroupingNode):
             raise Exception("Transform(s) não foram implementados.")
 
         # NO FUTURO MANDAR O OBJETO INTEIRO COM SEUS PARAMETROS ENCAPSULADOS
-        X3D.renderer["Transform_in"](translation=self.translation,
-                                     scale=self.scale,
-                                     rotation=self.rotation)
+        X3D.renderer["Transform_in"](
+            translation=self.translation, scale=self.scale, rotation=self.rotation
+        )
 
         for child in self.children:
             child.render()
@@ -453,14 +488,16 @@ class Transform(X3DGroupingNode):
 
 # Shape component
 
+
 class X3DShapeNode(X3DChildNode):
     """Este é o tipo de nó base para todos os nós do tipo Shape."""
 
     def __init__(self, node=None):
         """Parse do nó X3d."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.appearance = SFNode(node, "X3DAppearanceNode", None)
         self.geometry = SFNode(node, "X3DGeometryNode", None)
+
 
 class X3DAppearanceNode(X3DNode):
     """Este é o tipo de nó básico para todos os nós do tipo Appearance."""
@@ -530,7 +567,7 @@ class ImageTexture(X3DTexture2DNode):
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.url = MFString(node, "url", [])
         self.repeatS = SFBool(node, "repeatS", True)
         self.repeatT = SFBool(node, "repeatT", True)
@@ -539,12 +576,13 @@ class ImageTexture(X3DTexture2DNode):
         """Rotina de renderização."""
         X3D.current_texture = self.url
 
+
 class Appearance(X3DAppearanceNode):
     """Especifica as propriedades visuais da geometria."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
 
         self.fillProperties = SFNode(node, "FillProperties", None)
         self.lineProperties = SFNode(node, "LineProperties", None)
@@ -560,12 +598,13 @@ class Appearance(X3DAppearanceNode):
         if self.texture:
             self.texture.render()
 
+
 class Shape(X3DShapeNode):
     """Define aparência e geometria, que são usados para criar objetos renderizados."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
 
     def render(self):
         """Rotina de renderização."""
@@ -574,7 +613,9 @@ class Shape(X3DShapeNode):
         if self.geometry:
             self.geometry.render(self.appearance)
 
+
 # Rendering component
+
 
 class X3DGeometryNode(X3DNode):
     """Este é o tipo de nó base para todas as geometrias em X3D."""
@@ -630,7 +671,7 @@ class Coordinate(X3DCoordinateNode):
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.point = MFVec3f(node, "point", [])
 
 
@@ -639,7 +680,7 @@ class Color(X3DColorNode):
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.color = MFColor(node, "color", [])
 
 
@@ -648,7 +689,7 @@ class TriangleSet(X3DComposedGeometryNode):
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.vertices = MFVec2f(node, "vertices", [])
 
         # Preview
@@ -664,12 +705,13 @@ class TriangleSet(X3DComposedGeometryNode):
             # NO FUTURO MANDAR O OBJETO INTEIRO COM SEUS PARAMETROS ENCAPSULADOS
             X3D.renderer["TriangleSet"](point=self.coord.point, colors=colors)
 
+
 class TriangleStripSet(X3DComposedGeometryNode):
     """Representa uma forma 3D composta por faixas de triângulos."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.stripCount = MFInt32(node, "stripCount", [])
 
         # Preview
@@ -683,16 +725,17 @@ class TriangleStripSet(X3DComposedGeometryNode):
         colors = get_colors(appearance)
         if self.coord and self.coord.point and self.stripCount:
             # NO FUTURO MANDAR O OBJETO INTEIRO COM SEUS PARAMETROS ENCAPSULADOS
-            X3D.renderer["TriangleStripSet"](point=self.coord.point,
-                                             stripCount=self.stripCount,
-                                             colors=colors)
+            X3D.renderer["TriangleStripSet"](
+                point=self.coord.point, stripCount=self.stripCount, colors=colors
+            )
+
 
 class IndexedTriangleStripSet(X3DComposedGeometryNode):
     """Representa uma forma 3D composta de tiras de triângulos."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.index = MFInt32(node, "index", [])
 
         # Preview
@@ -707,28 +750,30 @@ class IndexedTriangleStripSet(X3DComposedGeometryNode):
         if "IndexedTriangleStripSet" in X3D.renderer:
             if self.coord and self.coord.point and self.index:
                 # NO FUTURO MANDAR O OBJETO INTEIRO COM SEUS PARAMETROS ENCAPSULADOS
-                X3D.renderer["IndexedTriangleStripSet"](point=self.coord.point,
-                                                        index=self.index,
-                                                        colors=colors)
+                X3D.renderer["IndexedTriangleStripSet"](
+                    point=self.coord.point, index=self.index, colors=colors
+                )
 
 
 # Geometry2D component
+
 
 class Polypoint2D(X3DGeometryNode):
     """Pontos exibidos por um conjunto de vértices no sistema de coordenadas 2D."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.point = MFVec2f(node, "point", [])
 
         # Preview
         if X3D.preview:
             points = []
             for i in range(0, len(self.point), 2):
-                points.append([self.point[i], self.point[i+1]])
-            X3D.preview.pontos.append({'appearance': X3D.current_appearance,
-                                       'points': points})
+                points.append([self.point[i], self.point[i + 1]])
+            X3D.preview.pontos.append(
+                {"appearance": X3D.current_appearance, "points": points}
+            )
 
     def render(self, appearance=None):
         """Rotina de renderização."""
@@ -745,16 +790,17 @@ class Polyline2D(X3DGeometryNode):
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.lineSegments = MFVec2f(node, "lineSegments", [])
 
         # Preview
         if X3D.preview:
             points = []
             for i in range(0, len(self.lineSegments), 2):
-                points.append([self.lineSegments[i], self.lineSegments[i+1]])
-            X3D.preview.linhas.append({'appearance': X3D.current_appearance,
-                                       'lines': points})
+                points.append([self.lineSegments[i], self.lineSegments[i + 1]])
+            X3D.preview.linhas.append(
+                {"appearance": X3D.current_appearance, "lines": points}
+            )
 
     def render(self, appearance=None):
         """Rotina de renderização."""
@@ -771,14 +817,15 @@ class Circle2D(X3DGeometryNode):
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.radius = SFFloat(node, "radius", 1)
 
         # Preview
         if X3D.preview:
             radius = self.radius
-            X3D.preview.circulos.append({'appearance': X3D.current_appearance,
-                                         'radius': radius})
+            X3D.preview.circulos.append(
+                {"appearance": X3D.current_appearance, "radius": radius}
+            )
 
     def render(self, appearance=None):
         """Rotina de renderização."""
@@ -795,7 +842,7 @@ class TriangleSet2D(X3DGeometryNode):
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.vertices = MFVec2f(node, "vertices", [])
         self.solid = SFBool(node, "solid", False)
 
@@ -803,9 +850,10 @@ class TriangleSet2D(X3DGeometryNode):
         if X3D.preview:
             points = []
             for i in range(0, len(self.vertices), 2):
-                points.append([self.vertices[i], self.vertices[i+1]])
-            X3D.preview.poligonos.append({'appearance': X3D.current_appearance,
-                                          'vertices': points})
+                points.append([self.vertices[i], self.vertices[i + 1]])
+            X3D.preview.poligonos.append(
+                {"appearance": X3D.current_appearance, "vertices": points}
+            )
 
     def render(self, appearance=None):
         """Rotina de renderização."""
@@ -818,6 +866,7 @@ class TriangleSet2D(X3DGeometryNode):
 
 
 # Navigation component
+
 
 class NavigationInfo(X3DBindableNode):
     """Características físicas do avatar do visualizador e do modelo de visualização."""
@@ -848,34 +897,38 @@ class X3DViewpointNode(X3DBindableNode):
         self.position = SFVec3f(node, "position", [0, 0, 10])
         self.orientation = SFRotation(node, "orientation", [0, 0, 1, 0])
 
+
 class Viewpoint(X3DViewpointNode):
     """Define um ponto de vista que fornece uma vista em perspectiva da cena."""
 
     def __init__(self, node=None):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
-        self.fieldOfView = SFFloat(node, "fieldOfView", math.pi/4)
+        super().__init__(node)  # Chama construtor da classe pai
+        self.fieldOfView = SFFloat(node, "fieldOfView", math.pi / 4)
         if (self.fieldOfView < 0) or (self.fieldOfView > math.pi):
-            self.fieldOfView = math.pi/4
+            self.fieldOfView = math.pi / 4
 
     def render(self):
         """Rotina de renderização."""
         if "Viewpoint" not in X3D.renderer:
             raise Exception("Viewpoint não foi implementado.")
 
-        X3D.renderer["Viewpoint"](position=self.position,
-                                  orientation=self.orientation,
-                                  fieldOfView=self.fieldOfView)
+        X3D.renderer["Viewpoint"](
+            position=self.position,
+            orientation=self.orientation,
+            fieldOfView=self.fieldOfView,
+        )
 
 
 # Geometry3D component
+
 
 class Box(X3DGeometryNode):
     """Classe responsável por geometria Box, que é um paralelepípedo centro no (0,0,0)."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.size = SFVec3f(node, "size", [2, 2, 2])
 
     def render(self, appearance=None):
@@ -893,7 +946,7 @@ class Sphere(X3DGeometryNode):
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.radius = SFFloat(node, "radius", 1)
 
     def render(self, appearance=None):
@@ -906,12 +959,54 @@ class Sphere(X3DGeometryNode):
             X3D.renderer["Sphere"](radius=self.radius, colors=colors)
 
 
+class Cone(X3DGeometryNode):
+    """Classe responsável por geometria Cone, que é um cone com centro no (0,0,0)."""
+
+    def __init__(self, node):
+        """Parse do nó X3D."""
+        super().__init__(node)  # Chama construtor da classe pai
+        self.bottomRadius = SFFloat(node, "bottomRadius", 1)
+        self.height = SFFloat(node, "height", 2)
+
+    def render(self, appearance=None):
+        """Rotina de renderização."""
+        if "Cone" not in X3D.renderer:
+            raise Exception("Cone não foi implementado.")
+
+        colors = get_colors(appearance)
+        if self.height and self.bottomRadius:
+            X3D.renderer["Cone"](
+                bottomRadius=self.bottomRadius, height=self.height, colors=colors
+            )
+
+
+class Cylinder(X3DGeometryNode):
+    """Classe responsável por geometria Cylinder, que é uma cilindro com centro no (0,0,0)."""
+
+    def __init__(self, node):
+        """Parse do nó X3D."""
+        super().__init__(node)  # Chama construtor da classe pai
+        self.radius = SFFloat(node, "radius", 1)
+        self.height = SFFloat(node, "height", 2)
+
+    def render(self, appearance=None):
+        """Rotina de renderização."""
+        if "Cylinder" not in X3D.renderer:
+            raise Exception("Cylinder não foi implementado.")
+
+        colors = get_colors(appearance)
+        if self.radius and self.height:
+            X3D.renderer["Cylinder"](
+                radius=self.radius, height=self.height, colors=colors
+            )
+
+
 class IndexedFaceSet(X3DComposedGeometryNode):
     """Classe responsável por geometria Indexed Face Set, que é uma malha de polígonos."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.color = SFNode(node, "X3DColorNode", None)
         self.coordIndex = MFInt32(node, "coordIndex", [])
         self.colorIndex = MFInt32(node, "colorIndex", [])
@@ -936,22 +1031,28 @@ class IndexedFaceSet(X3DComposedGeometryNode):
         colors = get_colors(appearance)
 
         if self.coordIndex:
-            X3D.renderer["IndexedFaceSet"](coord=ret_coord, coordIndex=self.coordIndex,
-                                           colorPerVertex=self.colorPerVertex, color=ret_color,
-                                           colorIndex=self.colorIndex, texCoord=ret_texCoord,
-                                           texCoordIndex=self.texCoordIndex,
-                                           colors=colors,
-                                           current_texture=X3D.current_texture)
+            X3D.renderer["IndexedFaceSet"](
+                coord=ret_coord,
+                coordIndex=self.coordIndex,
+                colorPerVertex=self.colorPerVertex,
+                color=ret_color,
+                colorIndex=self.colorIndex,
+                texCoord=ret_texCoord,
+                texCoordIndex=self.texCoordIndex,
+                colors=colors,
+                current_texture=X3D.current_texture,
+            )
 
 
 # Lighting component
+
 
 class X3DLightNode(X3DChildNode):
     """Nó abstrato base para todos os tipos de luzes."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.ambientIntensity = SFFloat(node, "ambientIntensity", 0)
         self.color = SFColor(node, "color", [1.0, 1.0, 1.0])
         self.intensity = SFFloat(node, "intensity", 1)
@@ -963,7 +1064,7 @@ class DirectionalLight(X3DLightNode):
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.direction = SFVec3f(node, "direction", [0.0, 0.0, -1.0])
 
     def render(self):
@@ -971,10 +1072,12 @@ class DirectionalLight(X3DLightNode):
         if "DirectionalLight" not in X3D.renderer:
             raise Exception("DirectionalLight não foi implementado.")
 
-        X3D.renderer["DirectionalLight"](ambientIntensity=self.ambientIntensity,
-                                         color=self.color,
-                                         intensity=self.intensity,
-                                         direction=self.direction)
+        X3D.renderer["DirectionalLight"](
+            ambientIntensity=self.ambientIntensity,
+            color=self.color,
+            intensity=self.intensity,
+            direction=self.direction,
+        )
 
 
 class PointLight(X3DLightNode):
@@ -982,7 +1085,7 @@ class PointLight(X3DLightNode):
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.location = SFVec3f(node, "location", [0.0, 0.0, 0.0])
 
     def render(self):
@@ -990,20 +1093,23 @@ class PointLight(X3DLightNode):
         if "PointLight" not in X3D.renderer:
             raise Exception("PointLight não foi implementado.")
 
-        X3D.renderer["PointLight"](ambientIntensity=self.ambientIntensity,
-                                   color=self.color,
-                                   intensity=self.intensity,
-                                   location=self.location)
+        X3D.renderer["PointLight"](
+            ambientIntensity=self.ambientIntensity,
+            color=self.color,
+            intensity=self.intensity,
+            location=self.location,
+        )
 
 
 # Texturing component
+
 
 class X3DTextureCoordinateNode(X3DGeometricPropertyNode):
     """Nó abstrato base para todos os tipos de nó que especificam coordenadas de textura."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
 
 
 class TextureCoordinate(X3DTextureCoordinateNode):
@@ -1011,7 +1117,7 @@ class TextureCoordinate(X3DTextureCoordinateNode):
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.point = MFVec2f(node, "point", [])
 
     def render(self):
@@ -1021,48 +1127,50 @@ class TextureCoordinate(X3DTextureCoordinateNode):
 # Environmental effects
 
 
-class X3DFogObject():
+class X3DFogObject:
     """Ttipo abstrato que descreve um nó que influencia a equação de iluminação de Fog."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.color = SFColor(node, "color", [1.0, 1.0, 1.0])
         self.fogType = SFString(node, "fogType", "LINEAR")
         self.visibilityRange = SFFloat(node, "visibilityRange", 0)
+
 
 class Fog(X3DBindableNode, X3DFogObject):
     """Simula efeitos atmosféricos combinando objetos com a cor especificada."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
 
     def render(self):
         """Rotina de renderização."""
         if "Fog" not in X3D.renderer:
             raise Exception("Fog não foi implementado.")
 
-        X3D.renderer["Fog"](visibilityRange=self.visibilityRange,
-                            color=self.color)
+        X3D.renderer["Fog"](visibilityRange=self.visibilityRange, color=self.color)
+
 
 class X3DInterpolatorNode(X3DChildNode):
     """Base para todos os tipos de interpoladores."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.set_fraction = SFFloat(node, "set_fraction", 0)
         self.key = MFFloat(node, "key", [])  # MF<type>     [in,out] keyValue      []
         self.keyValue = MFFloat(node, "keyValue", None)
         self.value_changed = None  #   [S|M]F<type> [out]    value_changed
+
 
 class SplinePositionInterpolator(X3DInterpolatorNode):
     """Interpola não linearmente entre uma lista de vetores 3D."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
         self.closed = SFBool(node, "closed", False)
 
     def render(self):
@@ -1070,38 +1178,41 @@ class SplinePositionInterpolator(X3DInterpolatorNode):
         if "SplinePositionInterpolator" not in X3D.renderer:
             raise Exception("SplinePositionInterpolator não foi implementado.")
 
-        self.value_changed = X3D.renderer["SplinePositionInterpolator"]\
-            (set_fraction=self.set_fraction,
-             key=self.key,
-             keyValue=self.keyValue,
-             closed=self.closed)
+        self.value_changed = X3D.renderer["SplinePositionInterpolator"](
+            set_fraction=self.set_fraction,
+            key=self.key,
+            keyValue=self.keyValue,
+            closed=self.closed,
+        )
+
 
 class OrientationInterpolator(X3DInterpolatorNode):
     """Interpola entre uma lista de valores de rotação especificados no campo keyValue."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__(node) # Chama construtor da classe pai
+        super().__init__(node)  # Chama construtor da classe pai
 
     def render(self):
         """Rotina de renderização."""
         if "OrientationInterpolator" not in X3D.renderer:
             raise Exception("OrientationInterpolator não foi implementado.")
 
-        self.value_changed = X3D.renderer["OrientationInterpolator"](set_fraction=self.set_fraction,
-                                                                     key=self.key,
-                                                                     keyValue=self.keyValue)
+        self.value_changed = X3D.renderer["OrientationInterpolator"](
+            set_fraction=self.set_fraction, key=self.key, keyValue=self.keyValue
+        )
 
-class ROUTE():
+
+class ROUTE:
     """."""
 
     def __init__(self, node):
         """Parse do nó X3D."""
-        super().__init__() # Chama construtor da classe pai
-        self.fromNode = SFString(node, "fromNode", '')
-        self.fromField = SFString(node, "fromField", '')
-        self.toNode = SFString(node, "toNode", '')
-        self.toField = SFString(node, "toField", '')
+        super().__init__()  # Chama construtor da classe pai
+        self.fromNode = SFString(node, "fromNode", "")
+        self.fromField = SFString(node, "fromField", "")
+        self.toNode = SFString(node, "toNode", "")
+        self.toField = SFString(node, "toField", "")
 
     def render(self):
         """Rotina de renderização."""
@@ -1109,3 +1220,24 @@ class ROUTE():
         value = getattr(fromNode, self.fromField)
         toNode = X3DNode.named_nodes[self.toNode]
         setattr(toNode, self.toField, value)
+
+
+from obj import load_obj
+
+
+class OBJ(X3DGeometryNode):
+    """Classe responsável por carregar e renderizar modelos OBJ."""
+
+    def __init__(self, node):
+        """Parse do nó X3D."""
+        super().__init__(node)
+        self.url = SFString(node, "url", "")
+        self.model = load_obj(self.url)
+
+    def render(self, appearance=None):
+        """Rotina de renderização."""
+        if "OBJ" not in X3D.renderer:
+            raise Exception("OBJ não foi implementado.")
+
+        colors = get_colors(appearance)
+        X3D.renderer["OBJ"](model=self.model, colors=colors)
