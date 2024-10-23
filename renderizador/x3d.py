@@ -29,7 +29,7 @@ def clean(child):
 def get_colors(appearance):
     """Método de apoio para recuperar cores de um nó Appearance."""
     colors = {
-        "diffuseColor": [0.8, 0.8, 0.8],  # Valor padrão
+        "diffuseColor": [0.0, 0.0, 0.0],  # Valor padrão
         "emissiveColor": [0.0, 0.0, 0.0],  # Valor padrão
         "specularColor": [0.0, 0.0, 0.0],  # Valor padrão
         "shininess": 0.2,  # Valor padrão

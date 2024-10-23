@@ -16,15 +16,10 @@ import gpu  # Simula os recursos de uma GPU
 import math  # Funções matemáticas
 import numpy as np  # Biblioteca do Numpy
 
-from utils import (
-    Transform,
-    Point,
-    Triangle,
-    DirectionalLight,
-    downsample_matrix_with_channels,
-    vector_module,
-)
-from primitives import Cube, Cone, Cilinder, Sphere
+
+from geometry import Point, Triangle, Transform, DirectionalLight
+from primitives import Cube, Cone, Cylinder, Sphere
+from utils import downsample_matrix_with_channels, vector_module
 
 
 class GL:
@@ -38,9 +33,10 @@ class GL:
     two_d_width = 30
     two_d_height = 20
 
-    perspective_matrix = None
-    view_matrix = None
     transformation_stack = []
+    view_matrix = None
+    view_transform_matrix = None
+    perspective_matrix = None
 
     directional_light = None
 
@@ -52,6 +48,12 @@ class GL:
         GL.supersampling_factor = supersampling_factor
         GL.near = near
         GL.far = far
+
+        transform = Transform()
+        transform.apply_scale([GL.width / 2, GL.height / 2, 1])
+        transform.apply_translation([1, 1, 0])
+        transform.apply_mirror("y")
+        GL.screen_transform = transform.get_transformation_matrix()
 
     @staticmethod
     def polypoint2D(point, colors):
@@ -265,7 +267,9 @@ class GL:
                 )
 
     @staticmethod
-    def triangleSet2D(vertices, colors, textures=None, three_d=False, normal=None):
+    def triangleSet2D(
+        vertices, colors, textures=None, three_d=False, normal=None, normals=None
+    ):
         """Função usada para renderizar TriangleSet2D."""
 
         def get_uv(alpha, beta, gamma, triangle):
@@ -324,16 +328,16 @@ class GL:
             )
 
             A = alpha / z0
-            B = beta / z1 if z1 != 0 else beta
+            B = beta / z1
             C = gamma / z2
 
             z = 1 / (A + B + C) if A + B + C != 0 else 1
 
             if "color_per_vertex" not in colors:
                 return [
-                    colors["emissiveColor"][0] * 255,
-                    colors["emissiveColor"][1] * 255,
-                    colors["emissiveColor"][2] * 255,
+                    colors["emissiveColor"][0],
+                    colors["emissiveColor"][1],
+                    colors["emissiveColor"][2],
                 ]
 
             c0 = colors["color_per_vertex"][i // 2]
@@ -346,13 +350,28 @@ class GL:
                 z * (A * c0[2] + B * c1[2] + C * c2[2]),
             ]
 
-            return [
-                max(min(int(color[0] * 255), 255), 0),
-                max(min(int(color[1] * 255), 255), 0),
-                max(min(int(color[2] * 255), 255), 0),
-            ]
+            return color
 
-        def apply_light(oergb):
+        def interpolate_normal(alpha, beta, gamma, normals):
+            n0, n1, n2 = normals
+
+            # Basic linear interpolation for testing
+            interpolated = np.array(
+                [
+                    alpha * n0[0] + beta * n1[0] + gamma * n2[0],
+                    alpha * n0[1] + beta * n1[1] + gamma * n2[1],
+                    alpha * n0[2] + beta * n1[2] + gamma * n2[2],
+                ]
+            )
+
+            # Normalize
+            length = np.linalg.norm(interpolated)
+            if length > 0:
+                interpolated = interpolated / length
+
+            return interpolated
+
+        def apply_light(oergb, normal_to_use):
             # print(colors)
             odrgb = colors["diffuseColor"] if "diffuseColor" in colors else [0, 0, 0]
             oa = colors["ambientIntensity"] if "ambientIntensity" in colors else 0
@@ -364,20 +383,24 @@ class GL:
             iia = GL.directional_light.ambient_intensity
 
             L = -np.array(GL.directional_light.direction)
-            v = normal
+            v = normal_to_use
 
             lv = (L + v) / vector_module(L + v)
 
             ambient_i = iia * np.array(odrgb) * np.array(oa)
-            diffuse_i = ii * np.array(odrgb) * np.dot(normal, L)
-            specular_i = ii * np.array(osrgb) * (np.dot(normal, lv)) ** (shiness * 128)
-            irgb = oergb + (ambient_i + diffuse_i + specular_i)
+            diffuse_i = ii * np.array(odrgb) * np.dot(normal_to_use, L)
+            specular_i = (
+                ii * np.array(osrgb) * (np.dot(normal_to_use, lv)) ** (shiness * 128)
+            )
+            if np.isnan(specular_i).any():
+                specular_i = [0, 0, 0]
 
-            return [
-                max(min(int(irgb[0] * 255), 255), 0),
-                max(min(int(irgb[1] * 255), 255), 0),
-                max(min(int(irgb[2] * 255), 255), 0),
-            ]
+            # print(f"Oergb: {oergb}")
+            # print(f"{ilrgb * (ambient_i + diffuse_i + specular_i)}")
+
+            irgb = oergb + ilrgb * (ambient_i + diffuse_i + specular_i)
+
+            return irgb
 
         step = 15 if three_d else 6
         for i in range(0, len(vertices), step):
@@ -454,6 +477,13 @@ class GL:
                         ):
                             continue
 
+                        if normals is not None:
+                            normal_to_use = interpolate_normal(
+                                alpha, beta, gamma, normals
+                            )
+                        else:
+                            normal_to_use = normal
+
                         if textures:
                             color = get_pixel_texture(x - min_x, y - min_y, uv_matrix)
                         else:
@@ -471,13 +501,19 @@ class GL:
                                         c
                                     ] * (1 - transparency)
 
-                        if GL.directional_light:
-                            color = apply_light(color)
+                            if GL.directional_light and normal_to_use is not None:
+                                color = apply_light(color, normal_to_use)
+
+                            color = [
+                                max(min(int(color[0] * 255), 255), 0),
+                                max(min(int(color[1] * 255), 255), 0),
+                                max(min(int(color[2] * 255), 255), 0),
+                            ]
 
                         # normal_map_color = [
-                        #     (normal[0] + 1) * 127.5,
-                        #     (normal[1] + 1) * 127.5,
-                        #     (normal[2] + 1) * 127.5,
+                        #     (normal_to_use[0] + 1) * 127.5,
+                        #     (normal_to_use[1] + 1) * 127.5,
+                        #     (normal_to_use[2] + 1) * 127.5,
                         # ]
 
                         # gpu.GPU.draw_pixel(
@@ -503,8 +539,30 @@ class GL:
                         )
 
     @staticmethod
-    def triangleSet(point, colors, textures=None):
+    def triangleSet(point, colors, textures=None, primitive=None, face_idx=None):
         """Função usada para renderizar TriangleSet."""
+
+        def transform_normal(normal, transformation_matrix):
+            """Transform normal using the inverse transpose of the transformation matrix."""
+            # Get the 3x3 portion of the transformation matrix (remove translation)
+            m = transformation_matrix[:3, :3]
+
+            # Calculate inverse transpose
+            try:
+                m_inv_transpose = np.linalg.inv(m).T
+            except np.linalg.LinAlgError:
+                # Fallback if matrix is not invertible
+                return normal
+
+            # Transform normal
+            transformed_normal = np.dot(m_inv_transpose, normal)
+
+            # Renormalize
+            length = np.linalg.norm(transformed_normal)
+            if length > 0:
+                transformed_normal = transformed_normal / length
+
+            return transformed_normal
 
         for i in range(0, len(point), 9):
             x0, y0, z0 = point[i], point[i + 1], point[i + 2]
@@ -515,31 +573,48 @@ class GL:
                 [[x0, x1, x2], [y0, y1, y2], [z0, z1, z2], [1, 1, 1]]
             )
 
-            transformed_points = np.matmul(GL.transformation_stack[-1], points_matrix)
+            if GL.view_transform_matrix is None:
+                GL.view_transform_matrix = np.matmul(
+                    GL.view_matrix, GL.transformation_stack[-1]
+                )
 
-            # Apply View
-            view_points = np.matmul(GL.view_matrix, transformed_points)
+            view_points = np.matmul(GL.view_transform_matrix, points_matrix)
             z_camera = view_points[2]
+
+            if primitive and not isinstance(primitive, Cube):
+                face = primitive.faces[face_idx]
+
+                n0 = primitive.get_vertex_normal(face[0])
+                n1 = primitive.get_vertex_normal(face[1])
+                n2 = primitive.get_vertex_normal(face[2])
+
+                n0 = transform_normal(n0, GL.view_transform_matrix)
+                n1 = transform_normal(n1, GL.view_transform_matrix)
+                n2 = transform_normal(n2, GL.view_transform_matrix)
+
+                face_normal = None
+                vertex_normals = [n0, n1, n2]
+
+            else:
+                p0 = Point(
+                    view_points[0][0], view_points[1][0], None, view_points[2][0]
+                )
+                p1 = Point(
+                    view_points[0][1], view_points[1][1], None, view_points[2][1]
+                )
+                p2 = Point(
+                    view_points[0][2], view_points[1][2], None, view_points[2][2]
+                )
+                face_normal = Triangle(p0, p1, p2).get_normal()
+                vertex_normals = None
 
             # Apply Perspective
             ndc = np.matmul(GL.perspective_matrix, view_points)
             ndc = ndc / ndc[3]
             z_ndc = ndc[2]
 
-            transform = Transform()
-            transform.apply_scale([GL.width / 2, GL.height / 2, 1])
-            transform.apply_translation([1, 1, 0])
-            transform.apply_mirror("y")
-            transform_matrix = transform.get_transformation_matrix()
-
-            # Calcula normal
-            p0 = Point(view_points[0][0], view_points[1][0], None, view_points[2][0])
-            p1 = Point(view_points[0][1], view_points[1][1], None, view_points[2][1])
-            p2 = Point(view_points[0][2], view_points[1][2], None, view_points[2][2])
-            triangle = Triangle(p0, p1, p2)
-            normal = triangle.get_normal()
-
-            screen_points = np.matmul(transform_matrix, ndc)
+            # Transform to screen space
+            screen_points = np.matmul(GL.screen_transform, ndc)
             screen_points = screen_points / screen_points[3]
 
             points = []
@@ -549,7 +624,14 @@ class GL:
                 points.append(z_camera[j])  # z (Colors)
                 points.append(z_ndc[j])  # z (Z Buffer)
 
-            GL.triangleSet2D(points, colors, textures, three_d=True, normal=normal)
+            GL.triangleSet2D(
+                points,
+                colors,
+                textures,
+                three_d=True,
+                normal=face_normal,
+                normals=vertex_normals,
+            )
 
     @staticmethod
     def viewpoint(position, orientation, fieldOfView):
@@ -610,6 +692,8 @@ class GL:
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
         # print("Transform : ", end="")
 
+        GL.view_transform_matrix = None
+
         # Instantiate the Transform class
         transform = Transform()
 
@@ -648,6 +732,7 @@ class GL:
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
         # print("Saindo de Transform")
         GL.transformation_stack.pop()
+        GL.view_transform_matrix = None
 
     @staticmethod
     def triangleStripSet(point, stripCount, colors):
@@ -879,107 +964,56 @@ class GL:
     def box(size, colors):
         """Função usada para renderizar Boxes."""
         # https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html#Box
-        # A função box é usada para desenhar paralelepípedos na cena. O Box é centrada no
-        # (0, 0, 0) no sistema de coordenadas local e alinhado com os eixos de coordenadas
-        # locais. O argumento size especifica as extensões da caixa ao longo dos eixos X, Y
-        # e Z, respectivamente, e cada valor do tamanho deve ser maior que zero. Para desenha
-        # essa caixa você vai provavelmente querer tesselar ela em triângulos, para isso
-        # encontre os vértices e defina os triângulos.
-
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        # print("Box : size = {0}".format(size)) # imprime no terminal pontos
-        # print("Box : colors = {0}".format(colors)) # imprime no terminal as cores
-
-        # Exemplo de desenho de um pixel branco na coordenada 10, 10
-        # gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
 
         cube = Cube(size[0])
-
-        triangles = cube.get_triangles()
-
-        for tri in triangles:
-            p1, p2, p3 = tri
-            points = list(p1) + list(p2) + list(p3)
-
-            GL.triangleSet(points, colors)
+        vertices, faces = cube.get_primitive()
+        for idx, face in enumerate(faces):
+            i1, i2, i3 = face[0], face[1], face[2]
+            v1, v2, v3 = vertices[i1], vertices[i2], vertices[i3]
+            points = list(v1) + list(v2) + list(v3)
+            GL.triangleSet(points, colors, primitive=cube, face_idx=idx)
 
     @staticmethod
     def sphere(radius, colors):
         """Função usada para renderizar Esferas."""
         # https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html#Sphere
-        # A função sphere é usada para desenhar esferas na cena. O esfera é centrada no
-        # (0, 0, 0) no sistema de coordenadas local. O argumento radius especifica o
-        # raio da esfera que está sendo criada. Para desenha essa esfera você vai
-        # precisar tesselar ela em triângulos, para isso encontre os vértices e defina
-        # os triângulos.
 
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        # print(
-        # "Sphere : radius = {0}".format(radius)
-        # )  # imprime no terminal o raio da esfera
-        # print("Sphere : colors = {0}".format(colors))  # imprime no terminal as cores
-
+        # print(f"Sphere: {radius}")
         sphere = Sphere(radius)
-
-        triangles = sphere.get_triangles()
-
-        for tri in triangles:
-            p1, p2, p3 = tri
-            points = list(p1) + list(p2) + list(p3)
-
-            GL.triangleSet(points, colors)
+        vertices, faces = sphere.get_primitive()
+        for idx, face in enumerate(faces):
+            i1, i2, i3 = face[0], face[1], face[2]
+            v1, v2, v3 = vertices[i1], vertices[i2], vertices[i3]
+            points = list(v1) + list(v2) + list(v3)
+            GL.triangleSet(points, colors, primitive=sphere, face_idx=idx)
 
     @staticmethod
     def cone(bottomRadius, height, colors):
         """Função usada para renderizar Cones."""
         # https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html#Cone
-        # A função cone é usada para desenhar cones na cena. O cone é centrado no
-        # (0, 0, 0) no sistema de coordenadas local. O argumento bottomRadius especifica o
-        # raio da base do cone e o argumento height especifica a altura do cone.
-        # O cone é alinhado com o eixo Y local. O cone é fechado por padrão na base.
-        # Para desenha esse cone você vai precisar tesselar ele em triângulos, para isso
-        # encontre os vértices e defina os triângulos.
-
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        # print("Cone : bottomRadius = {0}".format(bottomRadius)) # imprime no terminal o raio da base do cone
-        # print("Cone : height = {0}".format(height)) # imprime no terminal a altura do cone
-        # print("Cone : colors = {0}".format(colors)) # imprime no terminal as cores
 
         cone = Cone(bottomRadius, height)
+        vertices, faces = cone.get_primitive()
 
-        triangles = cone.get_triangles()
-
-        for tri in triangles:
-            p1, p2, p3 = tri
-            points = list(p1) + list(p2) + list(p3)
-
-            GL.triangleSet(points, colors)
+        for idx, face in enumerate(faces):
+            i1, i2, i3 = face[0], face[1], face[2]
+            v1, v2, v3 = vertices[i1], vertices[i2], vertices[i3]
+            points = list(v1) + list(v2) + list(v3)
+            GL.triangleSet(points, colors, primitive=cone, face_idx=idx)
 
     @staticmethod
     def cylinder(radius, height, colors):
         """Função usada para renderizar Cilindros."""
         # https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html#Cylinder
-        # A função cylinder é usada para desenhar cilindros na cena. O cilindro é centrado no
-        # (0, 0, 0) no sistema de coordenadas local. O argumento radius especifica o
-        # raio da base do cilindro e o argumento height especifica a altura do cilindro.
-        # O cilindro é alinhado com o eixo Y local. O cilindro é fechado por padrão em ambas as extremidades.
-        # Para desenha esse cilindro você vai precisar tesselar ele em triângulos, para isso
-        # encontre os vértices e defina os triângulos.
 
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        # print("Cylinder : radius = {0}".format(radius)) # imprime no terminal o raio do cilindro
-        # print("Cylinder : height = {0}".format(height)) # imprime no terminal a altura do cilindro
-        # print("Cylinder : colors = {0}".format(colors)) # imprime no terminal as cores
+        cylinder = Cylinder(radius, height)
+        vertices, faces = cylinder.get_primitive()
 
-        cilinder = Cilinder(radius, height)
-
-        triangles = cilinder.get_triangles()
-
-        for tri in triangles:
-            p1, p2, p3 = tri
-            points = list(p1) + list(p2) + list(p3)
-
-            GL.triangleSet(points, colors)
+        for idx, face in enumerate(faces):
+            i1, i2, i3 = face[0], face[1], face[2]
+            v1, v2, v3 = vertices[i1], vertices[i2], vertices[i3]
+            points = list(v1) + list(v2) + list(v3)
+            GL.triangleSet(points, colors, primitive=cylinder, face_idx=idx)
 
     @staticmethod
     def navigationInfo(headlight):
@@ -1068,7 +1102,7 @@ class GL:
         epoch = time.time()
 
         # Add a speed factor to make the animation slower
-        speed_factor = 0.05  # Adjust this value to control speed (smaller = slower)
+        speed_factor = 1  # Adjust this value to control speed (smaller = slower)
 
         # Calculate fraction with speed adjustment
         scaled_time = epoch * speed_factor
@@ -1152,28 +1186,103 @@ class GL:
 
     @staticmethod
     def orientationInterpolator(set_fraction, key, keyValue):
-        """Interpola entre uma lista de valores de rotação especificos."""
-        # https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html#OrientationInterpolator
-        # Interpola rotações são absolutas no espaço do objeto e, portanto, não são cumulativas.
-        # Uma orientação representa a posição final de um objeto após a aplicação de uma rotação.
-        # Um OrientationInterpolator interpola entre duas orientações calculando o caminho mais
-        # curto na esfera unitária entre as duas orientações. A interpolação é linear em
-        # comprimento de arco ao longo deste caminho. Os resultados são indefinidos se as duas
-        # orientações forem diagonalmente opostas. O campo keyValue possui uma lista com os
-        # valores a serem interpolados, key possui uma lista respectiva de chaves
-        # dos valores em keyValue, a fração a ser interpolada vem de set_fraction que varia de
-        # zeroa a um. O campo keyValue deve conter exatamente tantas rotações 3D quanto os
-        # quadros-chave no key.
+        """Interpolates between a list of specific rotation values."""
+        # Edge cases
+        if set_fraction <= key[0]:
+            rotation = keyValue[0:4]
+            return rotation
+        elif set_fraction >= key[-1]:
+            rotation = keyValue[-4:]
+            return rotation
+        else:
+            # Find index i such that key[i] <= set_fraction <= key[i+1]
+            for i in range(len(key) - 1):
+                if key[i] <= set_fraction <= key[i + 1]:
+                    break
 
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        print("OrientationInterpolator : set_fraction = {0}".format(set_fraction))
-        print("OrientationInterpolator : key = {0}".format(key))  # imprime no terminal
-        print("OrientationInterpolator : keyValue = {0}".format(keyValue))
+            t = (
+                (set_fraction - key[i]) / (key[i + 1] - key[i])
+                if key[i + 1] != key[i]
+                else 0.0
+            )
 
-        # Abaixo está só um exemplo de como os dados podem ser calculados e transferidos
-        value_changed = [0, 0, 1, 0]
+            # Get rotations at keyValue[i] and keyValue[i+1]
+            idx0 = 4 * i
+            idx1 = 4 * (i + 1)
+            rotation0 = keyValue[idx0 : idx0 + 4]
+            rotation1 = keyValue[idx1 : idx1 + 4]
 
-        return value_changed
+            axis0 = rotation0[:3]
+            angle0 = rotation0[3]
+            axis1 = rotation1[:3]
+            angle1 = rotation1[3]
+
+            # Convert axis-angle to quaternions
+            q0 = GL.axis_angle_to_quaternion(axis0, angle0)
+            q1 = GL.axis_angle_to_quaternion(axis1, angle1)
+
+            # Perform slerp
+            q = GL.slerp(q0, q1, t)
+
+            # Convert back to axis-angle
+            axis, angle = GL.quaternion_to_axis_angle(q)
+
+            value_changed = list(axis) + [angle]
+
+            return value_changed
+
+    @staticmethod
+    def axis_angle_to_quaternion(axis, angle):
+        axis = np.array(axis, dtype=np.float64)
+        axis_length = np.linalg.norm(axis)
+        if axis_length == 0:
+            axis = np.array([1.0, 0.0, 0.0])
+        else:
+            axis = axis / axis_length
+        half_angle = angle / 2.0
+        s = np.sin(half_angle)
+        w = np.cos(half_angle)
+        x, y, z = axis * s
+        return np.array([w, x, y, z], dtype=np.float64)
+
+    @staticmethod
+    def quaternion_to_axis_angle(q):
+        q = q / np.linalg.norm(q)
+        w, x, y, z = q
+        angle = 2 * np.arccos(w)
+        s = np.sqrt(1 - w * w)
+        if s < 1e-8:
+            # If s is close to zero, axis direction is not important
+            axis = np.array([1.0, 0.0, 0.0])
+        else:
+            axis = np.array([x, y, z]) / s
+        return axis.tolist(), angle
+
+    @staticmethod
+    def slerp(q0, q1, t):
+        dot = np.dot(q0, q1)
+        if dot < 0.0:
+            q1 = -q1
+            dot = -dot
+
+        DOT_THRESHOLD = 0.9995
+        if dot > DOT_THRESHOLD:
+            # Quaternions are close; use linear interpolation
+            result = q0 + t * (q1 - q0)
+            result = result / np.linalg.norm(result)
+            return result
+        else:
+            theta_0 = np.arccos(dot)
+            sin_theta_0 = np.sin(theta_0)
+            theta = theta_0 * t
+            sin_theta = np.sin(theta)
+
+            s0 = np.cos(theta) - dot * sin_theta / sin_theta_0
+            s1 = sin_theta / sin_theta_0
+
+            result = (s0 * q0) + (s1 * q1)
+            result = result / np.linalg.norm(result)
+            return result
 
     # Para o futuro (Não para versão atual do projeto.)
     def vertex_shader(self, shader):
@@ -1190,3 +1299,10 @@ class GL:
             for vertex_index in face:
                 points.extend(model.vertices[vertex_index])
             GL.triangleSet(points, colors)
+
+    # Para o futuro (Não para versão atual do projeto.)
+    def vertex_shader(self, shader):
+        """Para no futuro implementar um vertex shader."""
+
+    def fragment_shader(self, shader):
+        """Para no futuro implementar um fragment shader."""

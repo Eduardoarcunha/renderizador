@@ -29,7 +29,7 @@ ALTURA = 40  # Valor padrão para altura da tela
 class Renderizador:
     """Realiza a renderização da cena informada."""
 
-    def __init__(self, supersampling_factor=1):
+    def __init__(self, supersampling_factor=2):
         """Definindo valores padrão."""
         self.supersampling_factor = supersampling_factor
         self.width = LARGURA
@@ -97,6 +97,9 @@ class Renderizador:
 
     def pre(self):
         print(f"Pre renderização: {self.width}x{self.height}")
+        gpu.GPU.bind_framebuffer(
+            gpu.GPU.FRAMEBUFFER, self.framebuffers["SUPERSAMPLING"]
+        )
         """Rotinas pré renderização."""
         # Função invocada antes do processo de renderização iniciar.
 
@@ -114,63 +117,42 @@ class Renderizador:
 
         # Switch to the back buffer for downsampling
         gpu.GPU.bind_framebuffer(gpu.GPU.FRAMEBUFFER, self.framebuffers["BACK"])
-        # gpu.GPU.clear_buffer()
+        gpu.GPU.clear_buffer()
         self.downsample(supersampled_framebuffer)
 
         # Swap the buffers to display the new frame
         gpu.GPU.swap_buffers()
 
         # Prepare supersampling buffer for next frame
-        gpu.GPU.bind_framebuffer(
-            gpu.GPU.FRAMEBUFFER, self.framebuffers["SUPERSAMPLING"]
-        )
+        # gpu.GPU.bind_framebuffer(
+        #     gpu.GPU.FRAMEBUFFER, self.framebuffers["SUPERSAMPLING"]
+        # )
 
     def downsample(self, supersampled_framebuffer):
-        """Realiza o downsample do framebuffer."""
-        print(f"Framebuffers shape: {supersampled_framebuffer.shape}")
-        print(f"Downsample: {self.width}x{self.height}")
+        """Performs downsampling of the framebuffer using vectorized operations."""
+        # print(f"Framebuffers shape: {supersampled_framebuffer.shape}")
+        # print(f"Downsample: {self.width}x{self.height}")
+
+        ssf = self.supersampling_factor
+        height_ss, width_ss = supersampled_framebuffer.shape[:2]
+
+        # Ensure the framebuffer has the expected shape
+        assert height_ss == self.height * ssf
+        assert width_ss == self.width * ssf
+
+        # Reshape and compute the mean over the supersampling dimensions
+        framebuffer = supersampled_framebuffer.reshape(
+            self.height, ssf, self.width, ssf, 3
+        ).mean(axis=(1, 3))
+
+        # Convert to integers within the valid range [0, 255]
+        framebuffer = np.clip(framebuffer, 0, 255).astype(np.uint8)
+
+        # Draw the downsampled pixels to the GPU framebuffer
         for y in range(self.height):
             for x in range(self.width):
-                # Calcula a média dos pixels vizinhos usando um tipo de dado maior
-                r = 0
-                g = 0
-                b = 0
-
-                # Temporarily use a larger data type for accumulation
-                r_acc = np.int32(0)
-                g_acc = np.int32(0)
-                b_acc = np.int32(0)
-
-                for i in range(self.supersampling_factor):
-                    for j in range(self.supersampling_factor):
-                        r_acc += np.int32(
-                            supersampled_framebuffer[y * self.supersampling_factor + i][
-                                x * self.supersampling_factor + j
-                            ][0]
-                        )
-                        g_acc += np.int32(
-                            supersampled_framebuffer[y * self.supersampling_factor + i][
-                                x * self.supersampling_factor + j
-                            ][1]
-                        )
-                        b_acc += np.int32(
-                            supersampled_framebuffer[y * self.supersampling_factor + i][
-                                x * self.supersampling_factor + j
-                            ][2]
-                        )
-
-                # Perform averaging and cast back to the original data type
-                r = int(r_acc / (self.supersampling_factor**2))
-                g = int(g_acc / (self.supersampling_factor**2))
-                b = int(b_acc / (self.supersampling_factor**2))
-
-                # Ensure values stay within [0, 255]
-                r = max(0, min(255, r))
-                g = max(0, min(255, g))
-                b = max(0, min(255, b))
-
-                # Define o pixel no framebuffer
-                gpu.GPU.draw_pixel((x, y), gpu.GPU.RGB8, [r, g, b])
+                r, g, b = framebuffer[y, x]
+                gpu.GPU.draw_pixel((x, y), gpu.GPU.RGB8, [int(r), int(g), int(b)])
 
     def mapping(self):
         """Mapeamento de funções para as rotinas de renderização."""
